@@ -2,9 +2,9 @@
 
 Step-by-step installation and configuration of **Docker**, **Kubernetes (kubectl + minikube)**, **Terraform**, and **Ansible**, plus Linux user-group management, passwordless SSH, and passwordless sudo.
 
-[![Docker](https://img.shields.io/badge/Docker-24.0%2B-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-Engine-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-kubectl%20%2B%20minikube-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
-[![Terraform](https://img.shields.io/badge/Terraform-Latest-844FBA?logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![Terraform](https://img.shields.io/badge/Terraform-HashiCorp-844FBA?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![Ansible](https://img.shields.io/badge/Ansible-Automation-EE0000?logo=ansible&logoColor=white)](https://www.ansible.com/)
 [![OS](https://img.shields.io/badge/OS-Ubuntu%20%7C%20Debian%20%7C%20RHEL%20%7C%20Windows%20%7C%20macOS-lightgrey)](#)
 
@@ -112,8 +112,12 @@ newgrp docker
 ```bash
 docker --version
 docker compose version
-docker run hello-world
-docker rmi -f <image_id>
+
+# Run a test container and remove it automatically afterwards
+docker run --rm hello-world
+
+# Remove the test image
+docker rmi -f hello-world
 ```
 
 ---
@@ -215,43 +219,6 @@ terraform -version
 ---
 
 ### 2.4 Ansible
-The core issue is that Ansible requires your terminal environment to use a UTF-8 character encoding. It has detected ISO8859-1 instead, which causes it to immediately abort. Modern versions of Ansible strictly enforce this requirement.
-
-How to Fix It
-
-
-1. Quick Temporary Fix (Current Terminal Only)
-
-You can instantly force your current terminal session to use UTF-8 by exporting the correct environment variables:
-bash
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
-Use code with caution.
-After typing that, try running ansible --version again. It should work immediately.
-
-2. Permanent Fix (For Your User)
-
-To prevent having to type this every time you log into Linux-1, append these variables to your user's shell configuration file:
-1. Open your configuration file:bash
-nano ~/.bashrc
-Use code with caution.
-2. Scroll to the very bottom and paste these lines:bash
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
-Use code with caution.
-3. Save and close the file (Ctrl+O, then Enter, then Ctrl+X).
-4. Apply the changes immediately without logging out:bash
-source ~/.bashrc
-Use code with caution.
-
-3. Permanent System-Wide Fix (If the OS lacks the locale entirely)
-
-If you apply the steps above and get a warning like locale: Cannot set LC_ALL to default locale, your system doesn't have the UTF-8 package generated. Fix it system-wide with these commands:
-bash
-sudo locale-gen en_US.UTF-8
-sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-Use code with caution.
-Did the temporary export fix clear the error right away, or did your terminal throw a "locale not found" warning? Let me know so we can ensure your system-wide language settings are perfectly configured.
 
 Ansible automates configuration management, cloud provisioning, and software deployment without requiring remote agents.
 
@@ -278,6 +245,8 @@ ansible --version
 
 > Plain `pip3 install --user ansible` fails on Ubuntu 23.04+ and Debian 12+ with `externally-managed-environment` (PEP 668). Use `pipx` or a virtual environment instead.
 
+> If `ansible --version` aborts with an error about the terminal encoding (for example `ISO8859-1`), see [Troubleshooting: Ansible requires a UTF-8 locale](#ansible-aborts-requires-a-utf-8-locale).
+
 ---
 
 ## 3. RHEL / Rocky / AlmaLinux Installation
@@ -285,9 +254,13 @@ ansible --version
 For Red Hat Enterprise Linux 8/9, Rocky Linux, or AlmaLinux. Run as a normal user with `sudo`.
 
 ```bash
-# 1. Install prerequisites & EPEL
+# 1. Install prerequisites
 #    (do NOT add "curl" here: RHEL 9 ships curl-minimal and installing curl can conflict)
-sudo dnf install -y epel-release dnf-plugins-core
+sudo dnf install -y dnf-plugins-core
+
+#    Rocky / AlmaLinux only: EPEL is optional and not required by the steps below.
+#    It is NOT available in the default repos of genuine RHEL.
+# sudo dnf install -y epel-release
 
 # 2. Remove conflicting Podman-based Docker shims (if present)
 sudo dnf remove -y podman-docker 2>/dev/null || true
@@ -427,6 +400,8 @@ ansible localhost -m ping
 ---
 
 ## 7. Command Breakdown (Docker Install Script)
+
+> The commands below use `ubuntu` in the Docker URLs. **On Debian, replace `ubuntu` with `debian`** (section 2.1 handles this with the `DISTRO` variable).
 
 ### Step 1: Package list refresh and prerequisites
 
@@ -598,7 +573,7 @@ sudo groupadd developers
 # Create group with specific numeric GID
 sudo groupadd -g 1500 developers
 
-# Create system group (GID from the system range, below 1000)
+# Create system group (GID is typically below 1000; the exact range varies by distro)
 sudo groupadd -r sysadmin
 
 # Add user to a group (preserving existing groups)
@@ -770,10 +745,12 @@ To limit to specific commands (recommended for production):
 
 ```text
 # Example: allow only restarting/inspecting the Docker service
-devops ALL=(root) NOPASSWD: /usr/bin/systemctl restart docker, /usr/bin/systemctl status docker
+devops ALL=(root) NOPASSWD: /usr/bin/systemctl restart docker, /usr/bin/systemctl --no-pager status docker
 ```
 
 > ⚠️ **Do not whitelist `/usr/bin/docker` (or shells, editors, `find`, etc.) with `NOPASSWD`.** `sudo docker run -v /:/host ...` gives full root access, so it is equivalent to `NOPASSWD: ALL`. Also, minikube must run as a normal user, so it should not be in this list.
+>
+> **Why `--no-pager`?** Plain `systemctl status` opens a pager (`less`) when run interactively, and a user can escape from it (`!sh`) into a root shell. Whitelisting the exact command with `--no-pager` means sudo only matches that precise invocation.
 
 Save and exit:
 - In `nano`: `Ctrl+O`, `Enter`, `Ctrl+X`.
@@ -781,7 +758,7 @@ Save and exit:
 
 ### Step 3: Enforce strict file permissions
 
-`visudo -f` normally creates the file with the right mode, but verify it. The sudo daemon ignores drop-in files with loose permissions or invalid names:
+`visudo -f` normally creates the file with the right mode, but verify it. sudo ignores drop-in files with loose permissions or invalid names:
 
 ```bash
 sudo chmod 0440 /etc/sudoers.d/username_nopasswd
@@ -803,6 +780,116 @@ sudo whoami
 ```
 
 Output should immediately return `root` without prompting for a password.
+
+---
+
+## 12. Troubleshooting
+
+### Ansible aborts: requires a UTF-8 locale
+
+**Symptom:** `ansible --version` exits immediately, saying the locale encoding is `ISO8859-1` (or another non-UTF-8 encoding). Modern Ansible requires UTF-8.
+
+**Quick fix (current terminal only):**
+
+```bash
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+ansible --version
+```
+
+**Permanent fix (your user):** append the same two lines to `~/.bashrc`, then reload it:
+
+```bash
+echo 'export LANG=en_US.UTF-8' >> ~/.bashrc
+echo 'export LC_ALL=en_US.UTF-8' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**System-wide fix** (if you see `locale: Cannot set LC_ALL to default locale`, the locale has not been generated):
+
+```bash
+# Ubuntu / Debian (minimal images may need the locales package first)
+sudo apt-get install -y locales
+sudo locale-gen en_US.UTF-8
+sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+# RHEL / Rocky / AlmaLinux
+sudo dnf install -y glibc-langpack-en
+sudo localectl set-locale LANG=en_US.UTF-8
+```
+
+Log out and back in, then confirm with `locale`.
+
+### Docker: `permission denied while trying to connect to the Docker daemon socket`
+
+Your user is not in the `docker` group yet, or the session has not picked it up.
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker          # or log out and back in
+docker ps
+```
+
+### Docker: `Cannot connect to the Docker daemon`
+
+The daemon is not running.
+
+```bash
+sudo systemctl enable --now docker
+sudo systemctl status docker --no-pager
+```
+
+### minikube: `The "docker" driver should not be used with root privileges`
+
+Run minikube as a normal user (not with `sudo`, not as root). Make sure that user is in the `docker` group (see above).
+
+### minikube: fails to start or is very slow
+
+Check that you meet the minimums in [Prerequisites](#1-prerequisites) (2 CPUs, 2 GB RAM, 20 GB disk). To reset a broken cluster:
+
+```bash
+minikube delete
+minikube start --driver=docker
+```
+
+### kubectl download: `curl: (23) Failure writing output to destination`
+
+You ran the command in a directory you cannot write to (such as `/`). Run `cd ~` first.
+
+### apt: `NO_PUBKEY` or `The repository ... is not signed`
+
+The GPG key file is missing or unreadable. Re-run the key step for the affected repo and make sure the key is readable by the `_apt` user:
+
+```bash
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+sudo apt-get update
+```
+
+### pip: `externally-managed-environment`
+
+Ubuntu 23.04+ and Debian 12+ block system-wide `pip install` (PEP 668). Use `pipx` or a virtual environment:
+
+```bash
+sudo apt-get install -y pipx
+pipx install --include-deps ansible
+```
+
+### SSH: password login still works after disabling it
+
+A drop-in file in `/etc/ssh/sshd_config.d/` is overriding your setting. Check the effective value and fix the override:
+
+```bash
+sudo grep -ri "PasswordAuthentication" /etc/ssh/sshd_config /etc/ssh/sshd_config.d/
+sudo sshd -T | grep -i passwordauthentication
+sudo sshd -t && sudo systemctl restart ssh
+```
+
+### sudo: NOPASSWD rule is ignored
+
+- The file name must not contain a `.` or end with `~`.
+- Permissions must be `0440`: `sudo chmod 0440 /etc/sudoers.d/<file>`.
+- A later matching rule can override an earlier one. Check the order with `sudo -l`.
+- Validate syntax with `sudo visudo -c`.
 
 ---
 
