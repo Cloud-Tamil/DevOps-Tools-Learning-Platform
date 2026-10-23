@@ -113,6 +113,7 @@ newgrp docker
 docker --version
 docker compose version
 docker run hello-world
+docker rmi -f <image_id>
 ```
 
 ---
