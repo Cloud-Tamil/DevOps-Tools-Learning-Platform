@@ -371,6 +371,7 @@ Execute these verification commands to ensure all services and CLIs are properly
 docker version
 docker info
 docker run --rm hello-world
+docker rmi -f hello-world
 
 # 2. Kubernetes CLI & Minikube Cluster
 kubectl version --client
