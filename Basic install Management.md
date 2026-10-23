@@ -215,6 +215,43 @@ terraform -version
 ---
 
 ### 2.4 Ansible
+The core issue is that Ansible requires your terminal environment to use a UTF-8 character encoding. It has detected ISO8859-1 instead, which causes it to immediately abort. Modern versions of Ansible strictly enforce this requirement.
+
+How to Fix It
+
+
+1. Quick Temporary Fix (Current Terminal Only)
+
+You can instantly force your current terminal session to use UTF-8 by exporting the correct environment variables:
+bash
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+Use code with caution.
+After typing that, try running ansible --version again. It should work immediately.
+
+2. Permanent Fix (For Your User)
+
+To prevent having to type this every time you log into Linux-1, append these variables to your user's shell configuration file:
+1. Open your configuration file:bash
+nano ~/.bashrc
+Use code with caution.
+2. Scroll to the very bottom and paste these lines:bash
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+Use code with caution.
+3. Save and close the file (Ctrl+O, then Enter, then Ctrl+X).
+4. Apply the changes immediately without logging out:bash
+source ~/.bashrc
+Use code with caution.
+
+3. Permanent System-Wide Fix (If the OS lacks the locale entirely)
+
+If you apply the steps above and get a warning like locale: Cannot set LC_ALL to default locale, your system doesn't have the UTF-8 package generated. Fix it system-wide with these commands:
+bash
+sudo locale-gen en_US.UTF-8
+sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+Use code with caution.
+Did the temporary export fix clear the error right away, or did your terminal throw a "locale not found" warning? Let me know so we can ensure your system-wide language settings are perfectly configured.
 
 Ansible automates configuration management, cloud provisioning, and software deployment without requiring remote agents.
 
