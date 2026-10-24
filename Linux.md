@@ -22,6 +22,16 @@ A practical guide to manage Linux users and groups, set up key-based (passwordle
 5. [Worked example: a `deploy` automation user](#5-worked-example-a-deploy-automation-user)
 6. [Verification checklist](#6-verification-checklist)
 7. [Troubleshooting](#7-troubleshooting)
+8. [VirtualBox SSH Troubleshooting & Connectivity Guide](#virtualbox-ssh-troubleshooting--connectivity-guide)
+   - [Quick Diagnostic Flowchart](#quick-diagnostic-flowchart)
+   - [8.1 Enable and Restart the SSH Service](#81-enable-and-restart-the-ssh-service)
+   - [8.2 Allow Password or Key Authentication](#82-allow-password-or-key-authentication)
+   - [8.3 Configure the VM's Firewall Rules](#83-configure-the-vms-firewall-rules)
+   - [8.4 VirtualBox Port Forwarding (For NAT Adapter)](#84-virtualbox-port-forwarding-for-nat-adapter)
+   - [8.5 Check for IP Conflicts & Network Modes](#85-check-for-ip-conflicts--network-modes)
+   - [8.6 Real-Time SSH Diagnostics & Log Inspection](#86-real-time-ssh-diagnostics--log-inspection)
+   - [8.7 PuTTY-Specific Configuration Checks](#87-putty-specific-configuration-checks)
+   - [Quick safety rules](#quick-safety-rules)
 
 ---
 
@@ -485,13 +495,12 @@ Expected output: `root`
 | `groupdel: cannot remove the primary group of user` | The group is a user's primary group. | Change that user's primary group first: `sudo usermod -g <othergroup> <user>`. |
 
 ---
-# VirtualBox SSH Troubleshooting & Connectivity Guide
+
+## 8. VirtualBox SSH Troubleshooting & Connectivity Guide
 
 A complete guide to diagnose, fix, and verify SSH connections between a host machine (PuTTY / Windows Terminal / macOS / Linux) and a VirtualBox Linux guest VM (Ubuntu, Debian, CentOS, RHEL, Rocky, Fedora).
 
----
-
-## Quick Diagnostic Flowchart
+### Quick Diagnostic Flowchart
 
 If your SSH connection is failing, timing out, or PuTTY displays **"Server unexpectedly closed network connection"** or **"Connection refused"**:
 
@@ -501,13 +510,11 @@ If your SSH connection is failing, timing out, or PuTTY displays **"Server unexp
 4. **Port Forwarding (NAT)?** → Forward Host Port `2222` to Guest Port `22` in VirtualBox.
 5. **IP Conflicts?** → Check for duplicate IPs if using Host-Only or Bridged networking.
 
----
-
-## 1. Enable and Restart the SSH Service
+### 8.1 Enable and Restart the SSH Service
 
 The SSH server on your guest VM might be inactive, stopped, or crashing due to configuration errors. Open the VirtualBox terminal console and verify:
 
-### For Ubuntu / Debian
+#### For Ubuntu / Debian
 ```bash
 # Restart SSH service
 sudo systemctl restart ssh
@@ -519,7 +526,7 @@ sudo systemctl status ssh
 sudo systemctl enable ssh
 ```
 
-### For CentOS / RHEL / Rocky / AlmaLinux / Fedora
+#### For CentOS / RHEL / Rocky / AlmaLinux / Fedora
 ```bash
 # Restart SSH daemon
 sudo systemctl restart sshd
@@ -533,18 +540,16 @@ sudo systemctl enable sshd
 
 > 💡 **Tip:** If the service fails to start, test the configuration syntax with `sudo sshd -t`. Any syntax error in `/etc/ssh/sshd_config` will be printed immediately.
 
----
-
-## 2. Allow Password or Key Authentication
+### 8.2 Allow Password or Key Authentication
 
 If the SSH daemon is configured to reject your authentication method (e.g., password disabled by cloud-init or minimal templates), it will abruptly terminate or close the connection.
 
-### Step 1: Open SSH Daemon Configuration
+#### Step 1: Open SSH Daemon Configuration
 ```bash
 sudo nano /etc/ssh/sshd_config
 ```
 
-### Step 2: Configure Authentication Flags
+#### Step 2: Configure Authentication Flags
 Locate the following parameters, ensure they are **not** commented out (remove any leading `#`), and set them properly:
 
 ```sshconfig
@@ -564,7 +569,7 @@ PermitRootLogin yes
 > grep -rn "PasswordAuthentication" /etc/ssh/sshd_config*
 > ```
 
-### Step 3: Save and Apply Changes
+#### Step 3: Save and Apply Changes
 1. Press `Ctrl+O`, then `Enter` to save.
 2. Press `Ctrl+X` to exit nano.
 3. Restart the SSH service:
@@ -576,13 +581,11 @@ PermitRootLogin yes
    sudo systemctl restart sshd
    ```
 
----
-
-## 3. Configure the VM's Firewall Rules
+### 8.3 Configure the VM's Firewall Rules
 
 If the VM has a local firewall active, it may silently drop or reject incoming packets on port 22:
 
-### For Ubuntu / Debian (UFW)
+#### For Ubuntu / Debian (UFW)
 ```bash
 # Check UFW state
 sudo ufw status
@@ -594,7 +597,7 @@ sudo ufw allow 22/tcp
 sudo ufw reload
 ```
 
-### For CentOS / RHEL / Fedora (firewalld)
+#### For CentOS / RHEL / Fedora (firewalld)
 ```bash
 # Check firewalld state
 sudo firewall-cmd --state
@@ -611,13 +614,11 @@ sudo firewall-cmd --reload
 sudo firewall-cmd --list-all
 ```
 
----
-
-## 4. VirtualBox Port Forwarding (For NAT Adapter)
+### 8.4 VirtualBox Port Forwarding (For NAT Adapter)
 
 If your VM network is set to **NAT** (the default in VirtualBox), your host machine cannot reach the VM's internal IP (`10.0.2.15`) directly. You must forward a host port to the guest.
 
-### Step 1: Configure Port Forwarding in VirtualBox
+#### Step 1: Configure Port Forwarding in VirtualBox
 1. In VirtualBox Manager, select your VM → **Settings** → **Network** → **Adapter 1**.
 2. Click **Advanced** → **Port Forwarding**.
 3. Click the green `+` icon and configure:
@@ -633,7 +634,7 @@ If your VM network is set to **NAT** (the default in VirtualBox), your host mach
 
 4. Click **OK** to save.
 
-### Step 2: Connect via PuTTY or Host Terminal
+#### Step 2: Connect via PuTTY or Host Terminal
 - **Host / IP:** `127.0.0.1` (or `localhost`)
 - **Port:** `2222`
 - **Connection Type:** `SSH`
@@ -643,13 +644,11 @@ From a Windows / Mac / Linux terminal:
 ssh -p 2222 username@127.0.0.1
 ```
 
----
-
-## 5. Check for IP Conflicts & Network Modes
+### 8.5 Check for IP Conflicts & Network Modes
 
 If using **Bridged Adapter** or **Host-Only Adapter**:
 
-### Check VM IP Address
+#### Check VM IP Address
 Inside the VM terminal, check the assigned IP:
 ```bash
 # Display all assigned IPs
@@ -658,12 +657,12 @@ ip addr show
 hostname -I
 ```
 
-### Symptoms of IP Conflicts
+#### Symptoms of IP Conflicts
 - Connection works for a few seconds then freezes or resets (`Connection reset by peer`).
 - SSH key fingerprint keeps changing.
 - ARP cache shows flapping MAC addresses.
 
-### Fix IP Conflict
+#### Fix IP Conflict
 ```bash
 # Release and renew DHCP lease:
 sudo dhclient -r && sudo dhclient
@@ -673,13 +672,11 @@ sudo dhclient -r && sudo dhclient
 # /etc/sysconfig/network-scripts/ifcfg-eth0 (CentOS)
 ```
 
----
-
-## 6. Real-Time SSH Diagnostics & Log Inspection
+### 8.6 Real-Time SSH Diagnostics & Log Inspection
 
 To see exactly why the connection is dropped, inspect the authentication logs right after the connection fails:
 
-### Ubuntu / Debian:
+#### Ubuntu / Debian:
 ```bash
 # View last 25 authentication log entries
 sudo tail -n 25 /var/log/auth.log
@@ -688,7 +685,7 @@ sudo tail -n 25 /var/log/auth.log
 sudo journalctl -u ssh -n 25 --no-pager
 ```
 
-### CentOS / RHEL / Fedora:
+#### CentOS / RHEL / Fedora:
 ```bash
 # View secure log entries
 sudo tail -n 25 /var/log/secure
@@ -697,7 +694,7 @@ sudo tail -n 25 /var/log/secure
 sudo journalctl -u sshd -n 25 --no-pager
 ```
 
-### Common Log Messages & Fixes:
+#### Common Log Messages & Fixes:
 
 | Log Message | Cause | Resolution |
 | :--- | :--- | :--- |
@@ -707,13 +704,13 @@ sudo journalctl -u sshd -n 25 --no-pager
 | `Connection reset by ... port 22` | IP conflict or firewall dropping SYN packets | Check port forwarding and firewall rules |
 | `kex_exchange_identification: Connection closed` | Max connection limit or wrapper denial | Check `/etc/hosts.allow` and `/etc/hosts.deny` |
 
----
-
-## 7. PuTTY-Specific Configuration Checks
+### 8.7 PuTTY-Specific Configuration Checks
 
 1. **Host Name:** Use `127.0.0.1` with Port `2222` (if NAT port forwarding is used).
 2. **Private Key (.ppk):** If using SSH keys with PuTTY, ensure the key was converted to PuTTY `.ppk` format via **PuTTYgen** (OpenSSH `id_ed25519` / `id_rsa` must be imported into PuTTYgen and saved as `.ppk`).
 3. **Session Keepalive:** In PuTTY settings → **Connection** → set **Seconds between keepalives** to `30` to prevent VirtualBox NAT timeouts from closing idle connections.
+
+---
 
 ## Quick safety rules
 
