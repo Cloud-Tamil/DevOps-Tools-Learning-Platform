@@ -485,6 +485,235 @@ Expected output: `root`
 | `groupdel: cannot remove the primary group of user` | The group is a user's primary group. | Change that user's primary group first: `sudo usermod -g <othergroup> <user>`. |
 
 ---
+# VirtualBox SSH Troubleshooting & Connectivity Guide
+
+A complete guide to diagnose, fix, and verify SSH connections between a host machine (PuTTY / Windows Terminal / macOS / Linux) and a VirtualBox Linux guest VM (Ubuntu, Debian, CentOS, RHEL, Rocky, Fedora).
+
+---
+
+## Quick Diagnostic Flowchart
+
+If your SSH connection is failing, timing out, or PuTTY displays **"Server unexpectedly closed network connection"** or **"Connection refused"**:
+
+1. **Service Running?** → Check SSH service inside the VM (`systemctl status ssh` or `sshd`).
+2. **Auth Allowed?** → Enable `PasswordAuthentication` or `PubkeyAuthentication` in `/etc/ssh/sshd_config`.
+3. **Firewall Blocking?** → Allow port 22 in UFW or firewalld.
+4. **Port Forwarding (NAT)?** → Forward Host Port `2222` to Guest Port `22` in VirtualBox.
+5. **IP Conflicts?** → Check for duplicate IPs if using Host-Only or Bridged networking.
+
+---
+
+## 1. Enable and Restart the SSH Service
+
+The SSH server on your guest VM might be inactive, stopped, or crashing due to configuration errors. Open the VirtualBox terminal console and verify:
+
+### For Ubuntu / Debian
+```bash
+# Restart SSH service
+sudo systemctl restart ssh
+
+# Check active status (must show "active (running)")
+sudo systemctl status ssh
+
+# Ensure it starts automatically on VM boot
+sudo systemctl enable ssh
+```
+
+### For CentOS / RHEL / Rocky / AlmaLinux / Fedora
+```bash
+# Restart SSH daemon
+sudo systemctl restart sshd
+
+# Check active status
+sudo systemctl status sshd
+
+# Enable on boot
+sudo systemctl enable sshd
+```
+
+> 💡 **Tip:** If the service fails to start, test the configuration syntax with `sudo sshd -t`. Any syntax error in `/etc/ssh/sshd_config` will be printed immediately.
+
+---
+
+## 2. Allow Password or Key Authentication
+
+If the SSH daemon is configured to reject your authentication method (e.g., password disabled by cloud-init or minimal templates), it will abruptly terminate or close the connection.
+
+### Step 1: Open SSH Daemon Configuration
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+### Step 2: Configure Authentication Flags
+Locate the following parameters, ensure they are **not** commented out (remove any leading `#`), and set them properly:
+
+```sshconfig
+# Allow standard password authentication (useful for initial VM setup & PuTTY)
+PasswordAuthentication yes
+
+# Allow public key authentication (for SSH keys & .ppk keys)
+PubkeyAuthentication yes
+
+# If attempting to log in directly as root:
+PermitRootLogin yes
+# (Or 'PermitRootLogin prohibit-password' if connecting with keys only)
+```
+
+> 💡 **Note on Debian / Ubuntu 22.04+ & 24.04+:** Check `/etc/ssh/sshd_config.d/` for any drop-in override files (e.g. `50-cloud-init.conf`) that might be overriding `PasswordAuthentication`. Run:
+> ```bash
+> grep -rn "PasswordAuthentication" /etc/ssh/sshd_config*
+> ```
+
+### Step 3: Save and Apply Changes
+1. Press `Ctrl+O`, then `Enter` to save.
+2. Press `Ctrl+X` to exit nano.
+3. Restart the SSH service:
+   ```bash
+   # Ubuntu/Debian:
+   sudo systemctl restart ssh
+
+   # RHEL/CentOS/Fedora:
+   sudo systemctl restart sshd
+   ```
+
+---
+
+## 3. Configure the VM's Firewall Rules
+
+If the VM has a local firewall active, it may silently drop or reject incoming packets on port 22:
+
+### For Ubuntu / Debian (UFW)
+```bash
+# Check UFW state
+sudo ufw status
+
+# If active, allow SSH port 22
+sudo ufw allow 22/tcp
+
+# Reload firewall
+sudo ufw reload
+```
+
+### For CentOS / RHEL / Fedora (firewalld)
+```bash
+# Check firewalld state
+sudo firewall-cmd --state
+
+# Add SSH service to active zone permanently
+sudo firewall-cmd --permanent --add-service=ssh
+# Alternatively, specify port directly:
+sudo firewall-cmd --permanent --add-port=22/tcp
+
+# Reload firewall rules
+sudo firewall-cmd --reload
+
+# Verify
+sudo firewall-cmd --list-all
+```
+
+---
+
+## 4. VirtualBox Port Forwarding (For NAT Adapter)
+
+If your VM network is set to **NAT** (the default in VirtualBox), your host machine cannot reach the VM's internal IP (`10.0.2.15`) directly. You must forward a host port to the guest.
+
+### Step 1: Configure Port Forwarding in VirtualBox
+1. In VirtualBox Manager, select your VM → **Settings** → **Network** → **Adapter 1**.
+2. Click **Advanced** → **Port Forwarding**.
+3. Click the green `+` icon and configure:
+
+| Field | Value |
+| :--- | :--- |
+| **Name** | `SSH` |
+| **Protocol** | `TCP` |
+| **Host IP** | `127.0.0.1` |
+| **Host Port** | `2222` *(avoids conflict with host port 22)* |
+| **Guest IP** | *(Leave blank or enter VM IP, e.g., `10.0.2.15`)* |
+| **Guest Port** | `22` |
+
+4. Click **OK** to save.
+
+### Step 2: Connect via PuTTY or Host Terminal
+- **Host / IP:** `127.0.0.1` (or `localhost`)
+- **Port:** `2222`
+- **Connection Type:** `SSH`
+
+From a Windows / Mac / Linux terminal:
+```bash
+ssh -p 2222 username@127.0.0.1
+```
+
+---
+
+## 5. Check for IP Conflicts & Network Modes
+
+If using **Bridged Adapter** or **Host-Only Adapter**:
+
+### Check VM IP Address
+Inside the VM terminal, check the assigned IP:
+```bash
+# Display all assigned IPs
+ip addr show
+# Or:
+hostname -I
+```
+
+### Symptoms of IP Conflicts
+- Connection works for a few seconds then freezes or resets (`Connection reset by peer`).
+- SSH key fingerprint keeps changing.
+- ARP cache shows flapping MAC addresses.
+
+### Fix IP Conflict
+```bash
+# Release and renew DHCP lease:
+sudo dhclient -r && sudo dhclient
+
+# If static IP, change the last octet in netplan or network-scripts:
+# /etc/netplan/01-netcfg.yaml (Ubuntu)
+# /etc/sysconfig/network-scripts/ifcfg-eth0 (CentOS)
+```
+
+---
+
+## 6. Real-Time SSH Diagnostics & Log Inspection
+
+To see exactly why the connection is dropped, inspect the authentication logs right after the connection fails:
+
+### Ubuntu / Debian:
+```bash
+# View last 25 authentication log entries
+sudo tail -n 25 /var/log/auth.log
+
+# Or inspect systemd journal entries for SSH
+sudo journalctl -u ssh -n 25 --no-pager
+```
+
+### CentOS / RHEL / Fedora:
+```bash
+# View secure log entries
+sudo tail -n 25 /var/log/secure
+
+# Or journal entries for sshd
+sudo journalctl -u sshd -n 25 --no-pager
+```
+
+### Common Log Messages & Fixes:
+
+| Log Message | Cause | Resolution |
+| :--- | :--- | :--- |
+| `User ... not allowed because account is locked` | User account has no password set | Run `sudo passwd username` |
+| `Permission denied (publickey)` | Key mismatch or bad permissions | Run `chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys` |
+| `Authentication refused: bad ownership or modes for file` | Home directory or `.ssh` permissions too open (e.g. 777) | Run `chmod 755 ~ && chmod 700 ~/.ssh` |
+| `Connection reset by ... port 22` | IP conflict or firewall dropping SYN packets | Check port forwarding and firewall rules |
+| `kex_exchange_identification: Connection closed` | Max connection limit or wrapper denial | Check `/etc/hosts.allow` and `/etc/hosts.deny` |
+
+---
+
+## 7. PuTTY-Specific Configuration Checks
+
+1. **Host Name:** Use `127.0.0.1` with Port `2222` (if NAT port forwarding is used).
+2. **Private Key (.ppk):** If using SSH keys with PuTTY, ensure the key was converted to PuTTY `.ppk` format via **PuTTYgen** (OpenSSH `id_ed25519` / `id_rsa` must be imported into PuTTYgen and saved as `.ppk`).
+3. **Session Keepalive:** In PuTTY settings → **Connection** → set **Seconds between keepalives** to `30` to prevent VirtualBox NAT timeouts from closing idle connections.
 
 ## Quick safety rules
 
