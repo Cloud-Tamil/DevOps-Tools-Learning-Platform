@@ -146,9 +146,6 @@ If successful, you will see Docker's confirmation message:
 Hello from Docker!
 This message shows that your installation appears to be working correctly.
 ```
-
----
-
 ---
 
 ## Troubleshooting & Common Questions
