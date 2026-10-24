@@ -44,13 +44,19 @@ A practical guide to manage Linux users and groups, set up key-based (passwordle
 groups
 
 # Groups of a specific user
-groups john
+groups <username>
+
+# User add into group
+sudo usermod -aG <groupname> <username>
 
 # UID, GID, and supplementary group IDs
-id john
+id <username>
+
+# Group delete
+sudo groupdel <groupname>
 
 # Members and GID of a group
-getent group developers
+getent group <groupname>
 
 # All users on the system
 getent passwd | cut -d: -f1
