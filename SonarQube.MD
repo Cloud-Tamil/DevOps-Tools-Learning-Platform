@@ -608,17 +608,39 @@ docker compose up -d
 
 Use Web Preview with port `8080`. Remember that the left number is the host port, so Web Preview must use that same number.
 
-### Step 6: Fallback, Cloudflare Tunnel
+### Step 6: If It STILL Fails, Use the Tunnel Method (Cloudflare Tunnel)
 
-If Web Preview still fails, create a temporary public URL:
+If Google's Web Preview proxy is completely broken for your session, you can bypass it with `cloudflared` (Cloudflare Tunnel). This gives you a real, public URL that points at your SonarQube.
+
+Run this directly in your Cloud Shell terminal:
 
 ```bash
+# 1. Download the Cloudflare tunnel binary
 wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+
+# 2. Make it executable
 chmod +x cloudflared-linux-amd64
+
+# 3. Start the tunnel pointing to your SonarQube port
 ./cloudflared-linux-amd64 tunnel --url http://localhost:9000
 ```
 
-Open the `https://random-words-here.trycloudflare.com` address it prints. Anyone with that link can reach your SonarQube login page, so change the default admin password immediately and stop the tunnel (Ctrl+C) when you are done.
+Wait about 5 seconds. The terminal will output a public URL that looks like this:
+
+```text
+https://random-words-here.trycloudflare.com
+```
+
+Click that link. It will take you directly to your SonarQube login page (`admin` / `admin`, then change the password).
+
+**Things to know about the tunnel:**
+
+- **Keep that terminal open.** The tunnel runs in the foreground and stops as soon as you close it or press `Ctrl+C`. Open a **second Cloud Shell tab** to run your Maven scan and other commands.
+- **The URL changes every time** you start a new tunnel.
+- **Use the right port.** If you mapped SonarQube to another host port (for example `8080:9000`), point the tunnel at that port: `./cloudflared-linux-amd64 tunnel --url http://localhost:8080`.
+- **Check the server first.** If `curl -I http://localhost:9000` does not return `200` or `302`, the tunnel will only show an error page; fix SonarQube first (Steps 1-3).
+- **It is public.** Anyone with the link can reach your login page, so change the default admin password immediately and stop the tunnel when you are done.
+- **Scanning still uses localhost.** Keep `-Dsonar.host.url=http://localhost:9000` in your Maven command; the tunnel URL is only for viewing results in your browser.
 
 ### Running the scan in Cloud Shell
 
