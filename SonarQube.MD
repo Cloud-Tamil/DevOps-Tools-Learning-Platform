@@ -13,15 +13,13 @@ A complete guide to learning SonarQube, from fundamentals to a working end-to-en
 5. [Administration and Configuration](#5-administration-and-configuration)
 6. [Rules, Security and Advanced Analysis](#6-rules-security-and-advanced-analysis)
 7. [API and Automation](#7-api-and-automation)
-8. [Recommended Learning Order (2-3 Weeks)](#8-recommended-learning-order-2-3-weeks)
-9. [Practice and Community](#9-practice-and-community)
-10. [Certifications and Career](#10-certifications-and-career)
-11. [Hands-On Lab: Setup and Run a Project](#11-hands-on-lab-setup-and-run-a-project)
-12. [Troubleshooting](#12-troubleshooting)
-13. [Google Cloud Shell Guide](#13-google-cloud-shell-guide)
-14. [Security Notes](#14-security-notes)
-15. [Clean Up](#15-clean-up)
-16. [What to Try Next](#16-what-to-try-next)
+8. [Practice and Community](#8-practice-and-community)
+9. [Hands-On Lab: Setup and Run a Project](#9-hands-on-lab-setup-and-run-a-project)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Google Cloud Shell Guide](#11-google-cloud-shell-guide)
+12. [Security Notes](#12-security-notes)
+13. [Clean Up](#13-clean-up)
+14. [What to Try Next](#14-what-to-try-next)
 
 ---
 
@@ -163,6 +161,7 @@ This is Sonar's recommended methodology: focus on **New Code**, not legacy debt.
 
 - Web API docs: <https://docs.sonarsource.com/sonarqube-server/latest/extension-guide/web-api/>
 - On a running instance: `http://localhost:9000/web_api`
+
 ---
 
 ## 8. Practice and Community
@@ -172,6 +171,7 @@ This is Sonar's recommended methodology: focus on **New Code**, not legacy debt.
 - Blog (best practices, Clean Code): <https://www.sonarsource.com/blog/>
 - Clean Code concepts: <https://www.sonarsource.com/solutions/clean-code/>
 - Free courses/webinars: <https://www.sonarsource.com/learn/>
+
 ---
 
 ## 9. Hands-On Lab: Setup and Run a Project
@@ -261,7 +261,7 @@ docker compose logs -f sonarqube   # wait until "SonarQube is operational"
 
 Open <http://localhost:9000>, log in with `admin` / `admin`, and change the password when prompted.
 
-> Using Google Cloud Shell? `localhost:9000` will not open in your browser. See [Section 13](#13-google-cloud-shell-guide).
+> Using Google Cloud Shell? `localhost:9000` will not open in your browser. See [Section 11](#11-google-cloud-shell-guide).
 
 ### Part 2: Create a Project and Get a Token
 
@@ -306,8 +306,9 @@ cd sonar-scanning-examples/sonarqube-scanner
 
 Replace `YOUR_TOKEN` with your own token. Never commit tokens to Git.
 
-```bash
 **4A. Java with Maven**
+
+```bash
 mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
   -Dsonar.projectKey=my-sample-project \
   -Dsonar.projectName='my-sample-project' \
@@ -325,8 +326,9 @@ mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 ```
 
-```bash
 **4B. Node / npm**
+
+```bash
 npm install
 npx sonar-scanner \
   -Dsonar.projectKey=my-sample-project \
@@ -351,8 +353,9 @@ Then simply run:
 npx sonar-scanner -Dsonar.token=YOUR_TOKEN -Dsonar.host.url=http://localhost:9000
 ```
 
-```bash
 **4C. SonarScanner CLI via Docker (any language)**
+
+```bash
 docker run --rm \
   -e SONAR_HOST_URL="http://host.docker.internal:9000" \
   -e SONAR_TOKEN="YOUR_TOKEN" \
@@ -390,14 +393,11 @@ Click any issue to see the rule description, why it is an issue, and how to fix 
 
 ### Part 6: Configure a Quality Gate
 
-This guide creates a custom Quality Gate named **My Gate**, assigns it to
-`my-sample-project`, and makes the scanner **exit non-zero** when the gate fails
-so your CI/build actually breaks on a bad gate.
+This guide creates a custom Quality Gate named **My Gate**, assigns it to `my-sample-project`, and makes the scanner **exit non-zero** when the gate fails so your CI/build actually breaks on a bad gate.
 
-> **Assumption:** SonarQube is already installed and `my-sample-project` has been
-> analyzed at least once (so the project exists and metrics are populated).
+> **Assumption:** SonarQube is already installed and `my-sample-project` has been analyzed at least once (so the project exists and metrics are populated).
 
-* Step 1 — Create the Quality Gate *
+#### Step 1 — Create the Quality Gate
 
 1. Log in to SonarQube as an administrator.
 2. Go to **Quality Gates** (top menu).
@@ -405,28 +405,27 @@ so your CI/build actually breaks on a bad gate.
 4. Name it: `My Gate`
 5. Click **Create**.
 
-Step 2 — Add Conditions
+#### Step 2 — Add Conditions
 
 On the `My Gate` page, click **Add Condition** for each row below.
 
 > **Metric label depends on your SonarQube version:**
 >
-> | What you want            | SonarQube 8.x label                  | SonarQube 9.x+ / 10.x label        |
-> |--------------------------|--------------------------------------|------------------------------------|
-> | New bugs                 | `Bugs on New Code`                   | `New bugs`                         |
-> | New vulnerabilities      | `Vulnerabilities on New Code`        | `New vulnerabilities`              |
-> | Coverage on new code     | `Coverage on New Code`               | `Coverage on New Code`             |
-> | Duplication on new code  | `Duplicated Lines (%) on New Code`   | `Duplicated Lines (%) on New Code` |
+> | What you want | SonarQube 8.x label | SonarQube 9.x+ / 10.x label |
+> |---|---|---|
+> | New bugs | `Bugs on New Code` | `New bugs` |
+> | New vulnerabilities | `Vulnerabilities on New Code` | `New vulnerabilities` |
+> | Coverage on new code | `Coverage on New Code` | `Coverage on New Code` |
+> | Duplication on new code | `Duplicated Lines (%) on New Code` | `Duplicated Lines (%) on New Code` |
 >
-> If you can't find a metric, type the **search term** in the dropdown's search
-> box (e.g. `new`, `coverage`, `duplicat`).
+> If you can't find a metric, type the **search term** in the dropdown's search box (e.g. `new`, `coverage`, `duplicat`).
 
-| # | Metric (search term)                    | Operator           | Value | Notes                              |
-|---|-----------------------------------------|--------------------|-------|------------------------------------|
-| 1 | New bugs                                | is greater than    | `0`   | Fails if any new bug               |
-| 2 | New vulnerabilities                     | is greater than    | `0`   | Fails if any new vulnerability     |
-| 3 | Coverage on New Code                    | is less than       | `80`  | Fails if coverage < 80%            |
-| 4 | Duplicated Lines (%) on New Code        | is greater than    | `3`   | Fails if duplication > 3%          |
+| # | Metric (search term) | Operator | Value | Notes |
+|---|---|---|---|---|
+| 1 | New bugs | is greater than | `0` | Fails if any new bug |
+| 2 | New vulnerabilities | is greater than | `0` | Fails if any new vulnerability |
+| 3 | Coverage on New Code | is less than | `80` | Fails if coverage < 80% |
+| 4 | Duplicated Lines (%) on New Code | is greater than | `3` | Fails if duplication > 3% |
 
 After adding all four, click **Done** / **Save**.
 
@@ -528,7 +527,7 @@ Full endpoint list: `http://localhost:9000/web_api`
 
 ---
 
-## 12. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
@@ -545,7 +544,7 @@ Full endpoint list: `http://localhost:9000/web_api`
 
 ---
 
-## 13. Google Cloud Shell Guide
+## 11. Google Cloud Shell Guide
 
 Cloud Shell runs on a remote VM, so `http://localhost:9000` in your own browser will **not** reach it. Use this checklist.
 
@@ -661,7 +660,7 @@ mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
 
 ---
 
-## 14. Security Notes
+## 12. Security Notes
 
 - **Never paste real tokens into chats, screenshots, issues, or commits.** If a token was exposed, revoke it in **My Account > Security** and generate a new one.
 - Change the default `admin` / `admin` password on first login.
@@ -671,7 +670,7 @@ mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
 
 ---
 
-## 15. Clean Up
+## 13. Clean Up
 
 ```bash
 # Go back to the main folder
@@ -686,7 +685,7 @@ docker compose down -v
 
 ---
 
-## 16. What to Try Next
+## 14. What to Try Next
 
 - Branch/PR analysis (Developer edition and above), or use SonarQube Cloud for free PR decoration on public repos
 - Intentionally break the Quality Gate and see the pipeline fail with `-Dsonar.qualitygate.wait=true`
