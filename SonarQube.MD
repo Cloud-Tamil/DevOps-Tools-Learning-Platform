@@ -390,17 +390,45 @@ Click any issue to see the rule description, why it is an issue, and how to fix 
 
 ### Part 6: Configure a Quality Gate
 
+This guide creates a custom Quality Gate named **My Gate**, assigns it to
+`my-sample-project`, and makes the scanner **exit non-zero** when the gate fails
+so your CI/build actually breaks on a bad gate.
+
+> **Assumption:** SonarQube is already installed and `my-sample-project` has been
+> analyzed at least once (so the project exists and metrics are populated).
+
+* Step 1 — Create the Quality Gate *
+
 1. Log in to SonarQube as an administrator.
 2. Go to **Quality Gates** (top menu).
 3. Click **Create** (top-right).
-4. Name it: [**My Gate**]
-5. Click **Create.**
-6. Add conditions:
-|	Metric (search term)|	Operator|	Value|	Notes|
-|New bugs	|is greater than|	0	|Fails if any new bug|
-|New vulnerabilities	|is greater than|	0	|Fails if any new vulnerability|
-|	Coverage on New Code|	is less than|	80	|Fails if coverage < 80%|
-|Duplicated Lines (%) on New Code	|is greater than	3	|Fails if duplication > 3%|
+4. Name it: `My Gate`
+5. Click **Create**.
+
+Step 2 — Add Conditions
+
+On the `My Gate` page, click **Add Condition** for each row below.
+
+> **Metric label depends on your SonarQube version:**
+>
+> | What you want            | SonarQube 8.x label                  | SonarQube 9.x+ / 10.x label        |
+> |--------------------------|--------------------------------------|------------------------------------|
+> | New bugs                 | `Bugs on New Code`                   | `New bugs`                         |
+> | New vulnerabilities      | `Vulnerabilities on New Code`        | `New vulnerabilities`              |
+> | Coverage on new code     | `Coverage on New Code`               | `Coverage on New Code`             |
+> | Duplication on new code  | `Duplicated Lines (%) on New Code`   | `Duplicated Lines (%) on New Code` |
+>
+> If you can't find a metric, type the **search term** in the dropdown's search
+> box (e.g. `new`, `coverage`, `duplicat`).
+
+| # | Metric (search term)                    | Operator           | Value | Notes                              |
+|---|-----------------------------------------|--------------------|-------|------------------------------------|
+| 1 | New bugs                                | is greater than    | `0`   | Fails if any new bug               |
+| 2 | New vulnerabilities                     | is greater than    | `0`   | Fails if any new vulnerability     |
+| 3 | Coverage on New Code                    | is less than       | `80`  | Fails if coverage < 80%            |
+| 4 | Duplicated Lines (%) on New Code        | is greater than    | `3`   | Fails if duplication > 3%          |
+
+After adding all four, click **Done** / **Save**.
 
 3. Go to **Projects > my-sample-project > Project Settings > Quality Gate** and assign it.
 
