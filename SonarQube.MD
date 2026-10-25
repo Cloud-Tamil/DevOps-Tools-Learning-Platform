@@ -1,6 +1,6 @@
 # SonarQube: Complete Learning Path and Hands-On Lab
 
-A complete guide to learning SonarQube, from fundamentals to a working end-to-end setup: install with Docker Compose, scan a Maven project, read the results, enforce a Quality Gate, wire it into CI, and fix the common problems (including **Google Cloud Shell** access issues).
+A complete guide to learning SonarQube, from fundamentals to a working end-to-end setup: install with Docker Compose, scan a Maven project, read the results, enforce a Quality Gate, wire it into CI, and fix the common problems.
 
 ---
 
@@ -163,46 +163,18 @@ This is Sonar's recommended methodology: focus on **New Code**, not legacy debt.
 
 - Web API docs: <https://docs.sonarsource.com/sonarqube-server/latest/extension-guide/web-api/>
 - On a running instance: `http://localhost:9000/web_api`
-
 ---
 
-## 8. Recommended Learning Order (2-3 Weeks)
-
-| Day | Focus |
-|---|---|
-| 1-2 | Fundamentals and terminology; explore rules.sonarsource.com |
-| 3-4 | Install via Docker; run first scan on a sample repo |
-| 5-6 | Understand dashboard, issues, measures; tune Quality Gate |
-| 7-8 | Set up CI integration (GitHub Actions/GitLab) and coverage |
-| 9-10 | Clean as You Code, New Code, branch/PR analysis |
-| 11-12 | Security features, SonarLint in IDE |
-| 13-14 | Web API automation, admin (users/permissions/profiles) |
-| 15 | Capstone: onboard a real project end-to-end |
-
----
-
-## 9. Practice and Community
+## 8. Practice and Community
 
 - Sample projects: <https://github.com/SonarSource/sonar-scanning-examples>
 - Community forum: <https://community.sonarsource.com/>
 - Blog (best practices, Clean Code): <https://www.sonarsource.com/blog/>
 - Clean Code concepts: <https://www.sonarsource.com/solutions/clean-code/>
 - Free courses/webinars: <https://www.sonarsource.com/learn/>
-
 ---
 
-## 10. Certifications and Career
-
-- Sonar has no formal certification, but the knowledge maps to code quality and DevSecOps roles
-- Pair it with: SAST concepts, OWASP, CI/CD (GitHub Actions, Jenkins), and IDE tooling
-- Common interview topics: Quality Gates, taint analysis, technical debt, New Code strategy
-
-> **The ideal learning arc:**
-> Install, scan a repo, read issues, set a Quality Gate, wire into CI, adopt Clean as You Code, add security and SonarLint, then automate via the Web API.
-
----
-
-## 11. Hands-On Lab: Setup and Run a Project
+## 9. Hands-On Lab: Setup and Run a Project
 
 A full end-to-end walkthrough: install SonarQube, scan a real project, view the results, and wire it into CI.
 
@@ -244,8 +216,8 @@ services:
       - "9000:9000"
     environment:
       SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
-      SONAR_JDBC_USERNAME: sonar
-      SONAR_JDBC_PASSWORD: sonar
+      SONAR_JDBC_USERNAME: admin
+      SONAR_JDBC_PASSWORD: admin
     volumes:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_extensions:/opt/sonarqube/extensions
@@ -334,9 +306,8 @@ cd sonar-scanning-examples/sonarqube-scanner
 
 Replace `YOUR_TOKEN` with your own token. Never commit tokens to Git.
 
-**4A. Java with Maven**
-
 ```bash
+**4A. Java with Maven**
 mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
   -Dsonar.projectKey=my-sample-project \
   -Dsonar.projectName='my-sample-project' \
@@ -354,9 +325,8 @@ mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 ```
 
-**4B. Node / npm**
-
 ```bash
+**4B. Node / npm**
 npm install
 npx sonar-scanner \
   -Dsonar.projectKey=my-sample-project \
@@ -381,9 +351,8 @@ Then simply run:
 npx sonar-scanner -Dsonar.token=YOUR_TOKEN -Dsonar.host.url=http://localhost:9000
 ```
 
-**4C. SonarScanner CLI via Docker (any language)**
-
 ```bash
+**4C. SonarScanner CLI via Docker (any language)**
 docker run --rm \
   -e SONAR_HOST_URL="http://host.docker.internal:9000" \
   -e SONAR_TOKEN="YOUR_TOKEN" \
@@ -421,12 +390,18 @@ Click any issue to see the rule description, why it is an issue, and how to fix 
 
 ### Part 6: Configure a Quality Gate
 
-1. Go to **Quality Gates > Create** and name it `My Gate`.
-2. Add conditions:
-   - New bugs is greater than `0`
-   - New vulnerabilities is greater than `0`
-   - Coverage on New Code is less than `80`
-   - Duplicated Lines on New Code is greater than `3`
+1. Log in to SonarQube as an administrator.
+2. Go to **Quality Gates** (top menu).
+3. Click **Create** (top-right).
+4. Name it: [**My Gate**]
+5. Click **Create.**
+6. Add conditions:
+|	Metric (search term)|	Operator|	Value|	Notes|
+|New bugs	|is greater than|	0	|Fails if any new bug|
+|New vulnerabilities	|is greater than|	0	|Fails if any new vulnerability|
+|	Coverage on New Code|	is less than|	80	|Fails if coverage < 80%|
+|Duplicated Lines (%) on New Code	|is greater than	3	|Fails if duplication > 3%|
+
 3. Go to **Projects > my-sample-project > Project Settings > Quality Gate** and assign it.
 
 **Make the build actually fail on a bad gate.** By default the scanner does not wait for the gate result. Add this flag so the command exits non-zero when the gate fails:
