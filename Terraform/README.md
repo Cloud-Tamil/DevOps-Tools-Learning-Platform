@@ -1,4 +1,14 @@
-# Terraform: Complete Installation & Setup Guide (Ubuntu / Debian)
+<p align="center">
+  <img
+    src="https://upload.wikimedia.org/wikipedia/commons/0/04/Terraform_Logo.svg"
+    alt="Terraform Logo"
+    width="150"
+  >
+</p>
+
+<h1 align="center">
+  Terraform: Complete Installation & Setup Guide (Ubuntu / Debian)
+</h1>
 
 A step-by-step, production-ready guide to installing **HashiCorp Terraform** on Ubuntu, Debian, and Linux Mint / Pop!_OS using the official HashiCorp signed APT repository, enabling bash/zsh shell autocompletion, and verifying the installation.
 
