@@ -1,4 +1,14 @@
-# 🔐 Linux Users, Groups, Passwordless SSH, and Passwordless sudo
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/garrett/Tux/main/tux-large.png"
+    alt="Tux - The Linux Mascot"
+    width="150"
+  >
+</p>
+
+<h1 align="center">
+  🔐 Linux Users, Groups, Passwordless SSH, and Passwordless sudo
+</h1>
 
 A practical guide to manage Linux users and groups, set up key-based (passwordless) SSH login, and configure passwordless `sudo` safely for DevOps, automation, and service accounts.
 
