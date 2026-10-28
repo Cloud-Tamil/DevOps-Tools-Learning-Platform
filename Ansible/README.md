@@ -1,4 +1,8 @@
-# Ansible: Complete Installation & Configuration Guide (Linux)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/argoproj/Ansible/master/docs/assets/logo.png" alt="Ansible CD logo" width="150">
+</p>
+
+<h1 align="center"># Ansible: Complete Installation & Configuration Guide (Linux)</h1>
 
 A step-by-step, production-ready guide to installing and configuring **Ansible Automation Engine** on Ubuntu, Debian, and other Linux distributions. Choose between the official Ubuntu PPA, the standard distribution package, or PEP 668-compliant `pipx`.
 
