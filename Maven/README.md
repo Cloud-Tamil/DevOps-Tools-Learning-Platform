@@ -1,4 +1,14 @@
-# Complete Guide to Apache Maven
+<p align="center">
+  <img
+    src="https://maven.apache.org/images/maven-logo-black-on-white.png"
+    alt="Apache Maven Logo"
+    width="150"
+  >
+</p>
+
+<h1 align="center">
+  Complete Guide to Apache Maven
+</h1>
 
 A comprehensive walkthrough covering everything from basics to advanced usage.
 
