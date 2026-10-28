@@ -1,4 +1,14 @@
-# Kubernetes: kubectl and minikube Installation & Operations Guide
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.svg"
+    alt="Kubernetes Logo"
+    width="150"
+  >
+</p>
+
+<h1 align="center">
+  Kubernetes: kubectl and minikube Installation & Operations Guide
+</h1>
 
 A complete, step-by-step guide to installing the **kubectl** client CLI and provisioning a local single-node Kubernetes cluster with **minikube** on Linux (Ubuntu / Debian / RHEL family) using the Docker container driver.
 
