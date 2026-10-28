@@ -1,5 +1,10 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ansible/ansible/devel/docs/docsite/rst/_static/ansible.png" alt="Ansible Logo" width="150">
+  <img
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Ansible_Logo.png"
+    alt="Ansible Official Logo"
+    width="150"
+    height="150"
+  />
 </p>
 
 <h1 align="center">Ansible: Complete Installation and Configuration Guide (Linux)</h1>
