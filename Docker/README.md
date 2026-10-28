@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/docker/docs/master/content/manuals/images/dockersymbol.svg"
+    src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Docker_%28container_engine%29_logo.svg"
     alt="Docker Logo"
     width="150"
   >
