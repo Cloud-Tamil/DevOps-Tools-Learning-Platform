@@ -11,20 +11,19 @@ Argo CD keeps Kubernetes clusters in sync with Git, using a hands-on $ troublesh
 1. [What is Argo CD?](#1-what-is-argo-cd)
 2. [Architecture](#2-architecture)
 3. [Why Use Argo CD?](#3-why-use-argo-cd)
-4. [Argo CD vs Other Tools](#4-argo-cd-vs-other-tools)
-5. [How It Works End to End](#5-how-it-works-end-to-end)
-6. [Core Components](#6-core-components)
-7. [Key Concepts](#7-key-concepts)
-8. [Install Argo CD](#8-install-argo-cd)
-9. [Prepare the Git Repository](#9-prepare-the-git-repository)
-10. [Create an Application](#10-create-an-application)
-11. [Manual vs Automatic Sync](#11-manual-vs-automatic-sync)
-12. [Configuration Drift](#12-configuration-drift)
-13. [Rollback](#13-rollback)
-14. [Troubleshooting](#14-troubleshooting)
-15. [Production Best Practices](#15-production-best-practices)
-16. [Interview Questions](#16-interview-questions)
-17. [Learning Path](#17-learning-path)
+4. [How It Works End to End](#5-how-it-works-end-to-end)
+5. [Core Components](#6-core-components)
+6. [Key Concepts](#7-key-concepts)
+7. [Install and Access Argo CD](#8-Install-and-Access-Argo-CD)
+8. [Prepare the Git Repository](#9-prepare-the-git-repository)
+9. [Create an Application](#10-create-an-application)
+10. [Manual vs Automatic Sync](#11-manual-vs-automatic-sync)
+11. [Configuration Drift](#12-configuration-drift)
+12. [Rollback](#13-rollback)
+13. [Troubleshooting](#14-troubleshooting)
+14. [Production Best Practices](#15-production-best-practices)
+15. [Interview Questions](#16-interview-questions)
+16. [Learning Path](#17-learning-path)
 
 ---
 
@@ -78,45 +77,12 @@ This becomes hard to manage across many applications and clusters.
 - Multiple applications and clusters can be managed centrally.
 
 > Argo CD does not replace Kubernetes. It manages the delivery and synchronization of Kubernetes resources.
-
----
-
-## 4. Argo CD vs Other Tools
-
-| Tool | Main responsibility |
-|------|---------------------|
-| Docker | Packages an application into a container image |
-| Jenkins / GitHub Actions | CI: runs tests and builds images |
-| GitHub | Stores source code and deployment configuration |
-| Argo CD | Synchronizes Git configuration with Kubernetes |
-| Kubernetes | Runs and manages containerized applications |
-| Helm | Packages and templates Kubernetes resources |
-| Terraform | Provisions infrastructure (networks, clusters) |
-
-A common setup: **Jenkins or GitHub Actions for CI, Argo CD for CD.**
-
 ---
 
 ## 5. How It Works End to End
+<img width="2728" height="1960" alt="argocd_gitops_deployment_flow" src="https://github.com/user-attachments/assets/99d3d562-5a78-4459-9c82-90dba469fbc2" />
 
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant Git as GitHub
-    participant CI as Jenkins / GitHub Actions
-    participant ACR as Container Registry
-    participant Argo as Argo CD
-    participant K8s as AKS Cluster
 
-    Dev->>Git: 1. Push application code
-    Git->>CI: Trigger pipeline
-    CI->>ACR: 2. Test, build, push shopsphere:v2.0
-    CI->>Git: 3. Update manifest image tag (v1.0 to v2.0)
-    Argo->>Git: 4. Detect change, compare with live state
-    Argo->>K8s: 5. Sync (automatic or manual)
-    K8s->>ACR: 6. Pull new image, replace Pods
-    K8s-->>Argo: Report health
-```
 
 1. **Push code:** a developer pushes a change to GitHub.
 2. **Build image:** CI runs tests, builds the image and pushes it to the registry (for example `shopsphere:v2.0`).
@@ -155,47 +121,190 @@ The first three are the most important to remember.
 
 ---
 
-## 8. Install Argo CD
+## 8. Install and Access Argo CD
 
-Works on Minikube, AKS, EKS or any Kubernetes cluster.
+Works on Minikube, AKS, EKS or any Kubernetes cluster. You need `kubectl` configured for the target cluster.
 
-**1. Create the namespace**
+### 8.1 Install
 
 ```bash
 kubectl create namespace argocd
-```
 
-**2. Install Argo CD**
-
-```bash
 kubectl apply -n argocd --server-side --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-**3. Verify**
+Wait until everything is ready:
 
 ```bash
+kubectl wait --for=condition=Ready pod --all -n argocd --timeout=300s
 kubectl get pods -n argocd
 ```
 
-Wait until all Pods are `Running` and ready.
+> For production, pin a specific release instead of `stable`, for example `.../argo-cd/v3.x.x/manifests/install.yaml` (use the latest version from the Argo CD releases page).
 
-**4. Access the UI**
+### 8.2 Access the UI
+
+**Option A: port-forward (local learning)**
 
 ```bash
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
-Open `https://localhost:8080`. The browser may warn about the self-signed certificate; this is expected in a local setup.
+Open `https://localhost:8080`. The self-signed certificate warning is expected locally.
 
-**5. Get the initial admin password**
+**Option B: LoadBalancer (AKS / EKS test clusters)**
 
 ```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+kubectl get svc argocd-server -n argocd
 ```
 
-Log in with username `admin`, then change the password. Avoid default admin access in production.
+Use the `EXTERNAL-IP` shown in the output. For production, use an Ingress with TLS instead.
+
+### 8.3 Get the initial admin password
+
+```bash
+# Using the CLI
+argocd admin initial-password -n argocd
+
+# Or using kubectl
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d; echo
+```
+
+Username: `admin`.
+
+### 8.4 Install the Argo CD CLI
+
+```bash
+# Linux
+curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+sudo install -m 555 argocd /usr/local/bin/argocd
+rm argocd
+
+# macOS
+brew install argocd
+
+# Windows
+choco install argocd-cli
+```
+
+Check it:
+
+```bash
+argocd version --client
+```
+
+### 8.5 Log in with the CLI
+
+```bash
+# Through the API server (port-forward must be running)
+argocd login localhost:8080 --username admin --password '<password>' --insecure
+
+# Or without the API server, using your kubeconfig access
+kubectl config set-context --current --namespace=argocd
+argocd login --core
+```
+
+`--insecure` is only for the local self-signed certificate. `--core` talks directly to the cluster, so it needs Kubernetes access but no Argo CD login.
+
+### 8.6 Secure the admin account
+
+```bash
+argocd account update-password
+kubectl -n argocd delete secret argocd-initial-admin-secret
+```
+
+Deleting the initial secret is safe once you have changed the password. In production, set up SSO and disable the built-in admin:
+
+```bash
+kubectl patch configmap argocd-cm -n argocd --type merge \
+  -p '{"data":{"admin.enabled":"false"}}'
+```
+
+### 8.7 Useful commands for full control
+
+**Applications**
+
+```bash
+argocd app list
+argocd app get shopsphere
+argocd app diff shopsphere
+argocd app sync shopsphere
+argocd app sync shopsphere --prune
+argocd app history shopsphere
+argocd app rollback shopsphere <history-id>
+argocd app logs shopsphere
+argocd app delete shopsphere
+```
+
+> `argocd app rollback` only works when automated sync is off. In GitOps, prefer `git revert`.
+
+**Repositories, clusters and projects**
+
+```bash
+argocd repo add https://github.com/YOUR-ORG/shopsphere-gitops.git \
+  --username <user> --password <token>
+argocd repo list
+
+argocd cluster add <kubeconfig-context-name>
+argocd cluster list
+
+argocd proj list
+```
+
+**Accounts and context**
+
+```bash
+argocd account list
+argocd account get-user-info
+argocd context
+argocd logout localhost:8080
+```
+
+### 8.8 RBAC (who can do what)
+
+Edit the RBAC ConfigMap:
+
+```bash
+kubectl edit configmap argocd-rbac-cm -n argocd
+```
+
+Example: everyone is read-only by default, and the `devops` group is admin:
+
+```yaml
+data:
+  policy.default: role:readonly
+  policy.csv: |
+    g, devops, role:admin
+```
+
+### 8.9 Troubleshooting access
+
+```bash
+kubectl get pods -n argocd
+kubectl logs -n argocd deployment/argocd-server
+kubectl rollout restart deployment argocd-server -n argocd
+```
+
+**Forgot the admin password?** Generate a bcrypt hash and patch the secret:
+
+```bash
+argocd account bcrypt --password '<new-password>'
+
+kubectl -n argocd patch secret argocd-secret -p \
+  '{"stringData": {"admin.password": "<bcrypt-hash>", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
+```
+
+### 8.10 Uninstall
+
+```bash
+kubectl delete -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl delete namespace argocd
+```
+
+> This removes the Argo CD CRDs, so all Application definitions are deleted too. Deployed workloads are removed only if the Applications have a cascading delete finalizer.
 
 ---
 
