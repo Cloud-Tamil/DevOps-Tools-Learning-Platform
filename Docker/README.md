@@ -1,12 +1,14 @@
 <p align="center">
   <img
-    src="https://upload.wikimedia.org/wikipedia/commons/7/79/Docker_%28container_engine%29_logo.svg"
+    src="https://raw.githubusercontent.com/docker/docs/master/content/manuals/images/dockersymbol.svg"
     alt="Docker Logo"
     width="150"
   >
 </p>
 
-<h1 align="center">Docker Engine: Complete Installation & Configuration Guide (Ubuntu / Debian) (Linux)</h1>
+<h1 align="center">
+  Docker Engine: Complete Installation and Configuration Guide (Ubuntu / Debian Linux)
+</h1>
 
 A step-by-step, production-ready guide to cleanly install official **Docker Community Edition (CE)**, Docker CLI, Containerd, Buildx, and Compose v2 on **Ubuntu, Debian, and their derivatives (e.g. Linux Mint, Pop!_OS)**, configure non-root user execution, and verify the installation.
 
