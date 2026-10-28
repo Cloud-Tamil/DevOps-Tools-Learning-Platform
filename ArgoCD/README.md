@@ -4,7 +4,7 @@
 
 <h1 align="center">Argo CD: Beginner to Advanced Guide</h1>
 
-Learn how Argo CD keeps Kubernetes clusters in sync with Git, using a hands-on example (**ShopSphere** on AKS), troubleshooting tips, best practices and interview questions.
+Argo CD keeps Kubernetes clusters in sync with Git, using a hands-on $ troubleshooting tips, best practices.
 
 ## Table of Contents
 
