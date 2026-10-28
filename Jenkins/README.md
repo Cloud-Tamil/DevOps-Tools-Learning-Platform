@@ -1,4 +1,14 @@
-# Jenkins on Linux: Complete Installation, Setup, and Uninstall Guide
+<p align="center">
+  <img
+    src="https://www.jenkins.io/images/logos/jenkins/jenkins.svg"
+    alt="Jenkins Logo"
+    width="150"
+  >
+</p>
+
+<h1 align="center">
+  Jenkins on Linux: Complete Installation, Setup, and Uninstall Guide (Ubuntu / Debian Linux)
+</h1>
 
 A complete, step-by-step README covering Jenkins installation on Ubuntu/Debian, Fedora, and RHEL-family distributions — including VirtualBox port forwarding, service management, firewall configuration, unlocking Jenkins, plugin setup, first admin user creation, changing ports, troubleshooting, and full uninstall.
 
