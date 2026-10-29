@@ -2,9 +2,8 @@
   <img src="https://raw.githubusercontent.com/argoproj/argo-cd/master/docs/assets/logo.png" alt="Argo CD logo" width="150">
 </p>
 
-<h1 align="center">Argo CD: Beginner to Advanced Guide</h1>
-
-# 🚀 Argo CD & GitOps Master Guide — From Fundamentals to Production Architecture
+<h1 align="center"># 🚀 Argo CD & GitOps Master Guide — From Fundamentals to Production Architecture
+</h1>
 
 [![ArgoCD](https://img.shields.io/badge/ArgoCD-v2.11.3-orange?logo=argo&logoColor=white)](https://argoproj.github.io/cd/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.28+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
