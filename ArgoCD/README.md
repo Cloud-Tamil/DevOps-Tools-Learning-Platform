@@ -277,16 +277,45 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 - Open your browser to: `https://localhost:8080`
 - *(The browser will show a self-signed certificate warning; click "Advanced" and proceed).*
 
-### Option B: Direct Insecure Argument (Fixes Port-Forward TLS Loops)
-If port-forwarding fails or loops, tell `argocd-server` to run without internal TLS:
+### Option B: Direct Insecure Argument (Fixes Port-Forward TLS Loops & Connection Drops)
+If port-forwarding fails, loops with HTTP 307 redirects, or gives certificate errors, configure `argocd-server` to run in `--insecure` mode using either of these two methods:
+
+#### Method 1: Instant One-Liner Patch (Fastest)
 ```bash
-# Add --insecure flag to argocd-server deployment
+# Append --insecure flag directly to argocd-server container arguments
 kubectl -n argocd patch deployment argocd-server --type json \
   -p '[{"op":"add","path":"/spec/template/spec/containers/0/command/-","value":"--insecure"}]'
 
 # Now port-forward HTTP directly:
 kubectl port-forward svc/argocd-server -n argocd 8080:8080
 ```
+
+#### Method 2: Directly Edit the Deployment Manifest (Interactive)
+If the ConfigMap doesn't exist or doesn't apply, append the `--insecure` argument straight to the container definition:
+
+1. Open the deployment manifest edit screen:
+   ```bash
+   kubectl edit deployment argocd-server -n argocd
+   ```
+2. Scroll down until you locate the `spec.template.spec.containers` block where it says `command:` and `- argocd-server`.
+3. Add `- --insecure` directly underneath it:
+   ```yaml
+   spec:
+     template:
+       spec:
+         containers:
+         - name: argocd-server
+           command:
+           - argocd-server
+           - --insecure
+   ```
+4. Save and exit the text editor:
+   - If using **nano**: Press `Ctrl + O` then `Enter`, followed by `Ctrl + X`.
+   - If using **vim**: Press `Esc`, type `:wq` and press `Enter`.
+5. The pods will automatically roll over and fix the loop! You can now port-forward cleanly:
+   ```bash
+   kubectl port-forward svc/argocd-server -n argocd 8080:8080
+   ```
 
 ### Option C: LoadBalancer (Cloud: EKS / AKS / GKE)
 ```bash
