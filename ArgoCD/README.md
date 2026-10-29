@@ -61,8 +61,8 @@ Argo CD reads the desired configuration from Git and compares it with live Kuber
 Without Argo CD, deployments are often done manually or through a pipeline:
 
 ```bash
-kubectl apply -f deployment.yaml
-kubectl apply -f service.yaml
+kubectl apply -f <deployment.yaml>
+kubectl apply -f <service.yaml>
 ```
 
 This becomes hard to manage across many applications and clusters.
@@ -149,6 +149,25 @@ kubectl get pods -n argocd
 
 ```bash
 kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+If it's not working use these commands.
+```bash
+
+2: Directly Edit the Deployment Args
+
+If the ConfigMap doesn't exist or doesn't apply, you can append the --insecure argument straight to the container definition:
+1. Open the deployment manifest edit screen:bash
+kubectl edit deployment argocd-server -n argocd
+Use code with caution.
+2. Scroll down until you locate the spec.template.spec.containers block where it says command: and - argocd-server.
+3. Add - --insecure directly underneath it:yaml
+spec:
+  containers:
+  - command:
+    - argocd-server
+    - --insecure
+Use code with caution.
+4. Save and exit the text editor (if using nano, press Ctrl+O then Enter and Ctrl+X). The pods will automatically roll over and fix the loop!
 ```
 
 Open `https://localhost:8080`. The self-signed certificate warning is expected locally.
