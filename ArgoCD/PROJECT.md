@@ -91,6 +91,7 @@ argocd:
      kubectl get pods -n argocd
 rollouts:
 	./scripts/install-rollouts.sh
+     kubectl get pods -n argo-rollouts
 access:
 	./scripts/access-argocd.sh
 clean:
