@@ -3,7 +3,7 @@
 A complete hands-on GitOps lab covering every Argo CD deployment and sync strategy.
 
 ## Prerequisites
-- Ubuntu 22.04 VM (VirtualBox) with 4 CPU / 8 GB RAM
+- Ubuntu 22.04 VM with 4 CPU / 8 GB RAM
 - Docker installed
 - Internet access
 
