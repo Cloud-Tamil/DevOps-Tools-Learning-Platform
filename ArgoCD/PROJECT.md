@@ -9,7 +9,7 @@
 
 > A complete GitOps master reference. This document provides **every manual command, one by one, in strict execution order** to build, configure, deploy, test, troubleshoot, and tear down every Kubernetes deployment strategy, Argo Rollout, and sync policy.
 
-> **Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap`](https://github.com/Learning-Pages/My-ArgoCD-Lap)
+> **Repository**: [`https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap`](https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap)
 >
 > **Branch**: every command below uses the `${GIT_BRANCH}` variable (set in Section 1) so it works whether your default branch is `main` or `master`.
 
@@ -19,7 +19,7 @@
 
 1. [Clone the Repository](#1-clone-the-repository)
 2. [Script Permissions & Makefile Shortcuts](#2-script-permissions--makefile-shortcuts)
-3. [Toolchain Installation](#3-toolchain-installation)
+3. [Toolchain Installation (Manual)](#3-toolchain-installation-manual)
 4. [Create Kubernetes Cluster with Kind](#4-create-kubernetes-cluster-with-kind)
 5. [Install Argo CD](#5-install-argo-cd)
 6. [Access Argo CD UI & CLI Authentication](#6-access-argo-cd-ui--cli-authentication)
@@ -55,7 +55,7 @@
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Learning-Pages/My-ArgoCD-Lap.git
+git clone https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap.git
 cd My-ArgoCD-Lap
 
 # Detect your default branch (main or master) and reuse it everywhere
@@ -82,39 +82,22 @@ Optional shortcuts. Save this as a `Makefile` in the repo root (recipe lines mus
 
 tools:
 	./scripts/install-tools.sh
+
 cluster:
 	./scripts/create-cluster.sh
-      kubectl get nodes
-      kubectl get pods
+	kubectl get nodes
+	kubectl get pods -A
+
 argocd:
 	./scripts/install-argocd.sh
-     kubectl get pods -n argocd
+	kubectl get pods -n argocd
+
 rollouts:
 	./scripts/install-rollouts.sh
-     kubectl get pods -n argo-rollouts
+	kubectl get pods -n argo-rollouts
+
 access:
 	./scripts/access-argocd.sh
- Manually Edit the ConfigMap
-If you prefer to modify the configuration file rather than the deployment, you can edit the argocd-cmd-params-cm ConfigMap.
-
-Open the ConfigMap for editing:
-
-bash
-kubectl edit configmap argocd-cmd-params-cm -n argocd
-In the data section, manually add or modify the following line:
-
-yaml
-data:
-  server.insecure: "true"
-Save and exit, then manually restart the server for the changes to take effect:
-
-bash
-kubectl rollout restart deployment argocd-server -n argocd
-⚠️ Key Reminder
-Regardless of which method you use, after the modification is complete, make sure to change your port forwarding command to map to port 80 (HTTP):
-
-bash
-kubectl port-forward svc/argocd-server -n argocd 8081:80
 
 clean:
 	./scripts/cleanup.sh
@@ -123,6 +106,26 @@ clean:
 Usage: `make tools`, `make cluster`, `make argocd`, `make rollouts`, `make access`, `make clean`.
 
 > Sections 3 – 7 show the same steps **manually**. Use either the scripts/Makefile **or** the manual commands, not both.
+>
+> If you use `make access` and hit TLS redirect loops, enable insecure (HTTP) mode as described in [Section 6.2](#62-option-b-insecure-http-mode--fixes-tls-redirect-loops). You can also do it by editing the ConfigMap by hand:
+>
+> ```bash
+> kubectl edit configmap argocd-cmd-params-cm -n argocd
+> ```
+>
+> Add this under `data:`
+>
+> ```yaml
+> data:
+>   server.insecure: "true"
+> ```
+>
+> Then restart the server and forward port **80** (HTTP) instead of 443:
+>
+> ```bash
+> kubectl rollout restart deployment argocd-server -n argocd
+> kubectl port-forward svc/argocd-server -n argocd 8080:80
+> ```
 
 ---
 
@@ -292,6 +295,8 @@ ARGOCD_PW=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath
 argocd login localhost:8080 --username admin --password "${ARGOCD_PW}" --plaintext
 ```
 
+> In insecure mode always forward port **80** (HTTP), not 443.
+
 ### 6.3 Verify Session
 
 ```bash
@@ -328,7 +333,7 @@ kubectl argo rollouts dashboard &
 
 ## 8. Connect Git Repository & Environment Setup
 
-Set your Git target repository (same org as Section 1):
+Set your Git target repository (same org and repo as Section 1):
 
 ```bash
 export GIT_REPO="https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap.git"
@@ -505,6 +510,7 @@ kubectl argo rollouts get rollout shopsphere-bg --watch
 ```bash
 kubectl port-forward svc/shopsphere-bg-preview 8081:80 &
 PF_PID=$!
+sleep 2
 curl -I http://localhost:8081
 kill ${PF_PID}
 ```
@@ -738,8 +744,13 @@ sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/sync-waves/all-resources.yaml | 
 
 ### 18.2 Watch Sequential Tier Rollout
 
+In one terminal:
 ```bash
-kubectl get ns shopsphere-waves -w &
+kubectl get ns shopsphere-waves -w
+```
+
+In another terminal:
+```bash
 kubectl -n shopsphere-waves get pods -w
 ```
 
@@ -973,7 +984,7 @@ kubectl -n argocd logs statefulset/argocd-application-controller --tail=50
 | Stuck in `OutOfSync` on Helm-in-Kustomize | Helm inflation not enabled | `kubectl -n argocd patch cm argocd-cm --type merge -p '{"data":{"kustomize.buildOptions":"--enable-helm"}}' && kubectl -n argocd rollout restart deploy/argocd-repo-server` |
 | `argocd` CLI: `connection refused` / `Unable to connect` | Port-forward died | Re-run `kubectl -n argocd port-forward svc/argocd-server 8080:443` (or `./scripts/access-argocd.sh`) |
 | `bind: address already in use` on 8080 | Something else owns port 8080 | Use another local port, e.g. `8085:443`, and log in to `localhost:8085` |
-| CLI login loops / TLS errors in insecure mode | Server is plain HTTP | Add `--plaintext` to `argocd login` |
+| CLI login loops / TLS errors in insecure mode | Server is plain HTTP | Add `--plaintext` to `argocd login` and forward port `80` |
 | `CRD too large` / annotation over 256KB | Client-side apply annotation limit | Add `ServerSideApply=true` to `syncOptions` |
 | My `kubectl set image` / `scale` keeps reverting | `selfHeal: true` restores the Git state | Change the manifest in Git and push |
 | `argocd app rollback` fails | Auto-sync is enabled | `argocd app set <app> --sync-policy none` first (Section 21.2) |
