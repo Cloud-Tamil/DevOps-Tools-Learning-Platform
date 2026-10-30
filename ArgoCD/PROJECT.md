@@ -84,7 +84,7 @@ tools:
 	./scripts/install-tools.sh
 cluster:
 	./scripts/create-cluster.sh
-     kubectl get nodes -n argocd
+      kubectl get nodes -n argocd
 argocd:
 	./scripts/install-argocd.sh
 rollouts:
