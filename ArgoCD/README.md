@@ -241,50 +241,6 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 
 ---
 
-## Step 5: Deploy Your First Application
-
-Create an `Application` that deploys the public Argo CD example guestbook app:
-
-```yaml
-# guestbook-app.yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: guestbook
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/argoproj/argocd-example-apps.git
-    targetRevision: HEAD
-    path: guestbook
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: guestbook
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-```
-
-Apply it and watch it sync:
-
-```bash
-kubectl apply -f guestbook-app.yaml
-kubectl -n argocd get applications
-kubectl -n guestbook get pods
-```
-
-To test self-healing, delete the deployment manually and watch Argo CD restore it:
-
-```bash
-kubectl -n guestbook delete deployment guestbook-ui
-```
-
----
-
 ## Step 6: Clean Up
 
 ```bash
