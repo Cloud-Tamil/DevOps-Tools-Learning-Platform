@@ -76,7 +76,8 @@ nproc
 ## 2. Project folder
 
 ```bash
-[`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git)
+git clone https://github.com/Learning-Pages/My-ArgoCD-Lap.git
+cd My-ArgoCD-Lap
 ```
 
 ---
