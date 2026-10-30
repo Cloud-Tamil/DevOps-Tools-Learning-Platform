@@ -19,10 +19,9 @@
 
 ## 📋 Table of Contents
 
-1. [Prerequisites & System Verification](#1-prerequisites--system-verification)
-2. [Project Layout Creation](#2-project-layout-creation)
-3. [Toolchain Installation](#3-toolchain-installation)
-4. [Create Kubernetes Cluster with Kind](#4-create-kubernetes-cluster-with-kind)
+1. [Project folder](#2-project-folder)
+2. [Toolchain Installation](#3-toolchain-installation)
+3. [Create Kubernetes Cluster with Kind](#4-create-kubernetes-cluster-with-kind)
 5. [Install Argo CD](#5-install-argocd)
 6. [Access Argo CD UI & CLI Authentication](#6-access-argocd-ui--cli-authentication)
 7. [Install Argo Rollouts Controller & Plugin](#7-install-argo-rollouts-controller--plugin)
