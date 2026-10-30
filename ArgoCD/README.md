@@ -2,19 +2,16 @@
   <img src="https://raw.githubusercontent.com/argoproj/argo-cd/master/docs/assets/logo.png" alt="Argo CD logo" width="150">
 </p>
 
-<h1 align="center">🚀 Argo CD & GitOps Master Guide - From Fundamentals to Production Architecture
-</h1>
+<h1 align="center">🚀 Argo CD & GitOps Master Guide - From Fundamentals to Production Architecture</h1>
 
-[![ArgoCD](https://img.shields.io/badge/ArgoCD-v2.11.3-orange?logo=argo&logoColor=white)](https://argoproj.github.io/cd/)
+[![Argo CD](https://img.shields.io/badge/Argo%20CD-GitOps-orange?logo=argo&logoColor=white)](https://argo-cd.readthedocs.io/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.28+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Helm](https://img.shields.io/badge/Helm-v3.14+-0F1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kustomize](https://img.shields.io/badge/Kustomize-v5.3+-green?logo=kubernetes&logoColor=white)](https://kustomize.io/)
 [![GitOps](https://img.shields.io/badge/Pattern-App--of--Apps%20%2B%20Matrix%20ApplicationSet-blueviolet)](https://argo-cd.readthedocs.io/)
-[![Repository](https://img.shields.io/badge/GitHub-Learning--Pages%2FMy--ArgoCD--Lap-black?logo=github)](https://github.com/Learning-Pages/My-ArgoCD-Lap.git)
+[![Repository](https://img.shields.io/badge/GitHub-Learning--DevOps--Platform%2FMy--ArgoCD--Lap-black?logo=github)](https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap)
 
-> **Complete GitOps Handbook**: Deep-dive theory, core components, hands-on tutorials, interview questions, and a battle-tested enterprise implementation (**ShopSphere**) using the **App-of-Apps** pattern and **Matrix ApplicationSets**.
-> 
-> **Configured for Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git) *(Branch: `main`)*
+> **Complete GitOps Handbook**: Deep-dive theory, core components, hands-on tutorials, interview questions, and an enterprise-style implementation (**ShopSphere**) using the **App-of-Apps** pattern and **Matrix ApplicationSets**.
 
 ---
 
@@ -26,6 +23,7 @@
   - [3. End-to-End Workflow](#3-end-to-end-workflow)
   - [4. Core Components Deep Dive](#4-core-components-deep-dive)
   - [5. Key GitOps Concepts](#5-key-gitops-concepts)
+
 ---
 
 # PART I: FUNDAMENTALS & ARCHITECTURE
@@ -34,36 +32,36 @@
 
 Argo CD is a **declarative, GitOps continuous delivery (CD) tool for Kubernetes**.
 
-It operates as an in-cluster controller that continuously compares the **desired state** (declared in your Git repository) with the **live state** (running inside your Kubernetes cluster) and reconciles any drift.
+It runs as a controller inside the cluster and continuously compares the **desired state** (declared in your Git repository) with the **live state** (running in your Kubernetes cluster). When they differ, it reports the application as `OutOfSync` and, if automated sync is enabled, reconciles the drift.
 
 ```mermaid
 flowchart LR
     Dev[Developer] -->|git commit & push| Git[(GitHub Repo<br/>YAML / Helm / Kustomize)]
-    Git -->|Pull Desired State| Argo[Argo CD Controller]
-    K8s[(Kubernetes Cluster<br/>Pods / Deployments / Services)] -->|Report Live State| Argo
-    Argo -->|Reconcile & Self-Heal| K8s
+    Argo[Argo CD] -->|Pull desired state| Git
+    K8s[(Kubernetes Cluster<br/>Pods / Deployments / Services)] -->|Report live state| Argo
+    Argo -->|Sync & self-heal| K8s
 ```
 
-### The Core GitOps Equation:
-1. **Source of Truth**: Git holds the complete specification of your infrastructure and application manifests.
-2. **Pull Model**: Argo CD pulls changes from Git into Kubernetes (no cluster credentials exposed to external CI).
-3. **Continuous Reconciliation**: If someone manually edits a live deployment with `kubectl`, Argo CD detects the configuration drift and reverts it.
+### The Core GitOps Principles
+1. **Source of Truth**: Git holds the complete specification of your application manifests and configuration.
+2. **Pull Model**: Argo CD pulls changes from Git into Kubernetes, so external CI systems do not need cluster credentials.
+3. **Continuous Reconciliation**: Argo CD detects when the live state drifts from Git (for example, after a manual `kubectl edit`). With `selfHeal` enabled, it reverts the change automatically.
 
 ---
 
 ## 2. Why Use Argo CD? (GitOps vs Traditional CI/CD)
 
-### Without Argo CD (Traditional Push-based CI/CD):
-- External CI runners (Jenkins, GitLab CI, GitHub Actions) require administrative cluster credentials (`kubeconfig`).
-- If an admin runs `kubectl edit deployment` directly in the cluster, the cluster state drifts from Git, and nobody knows.
-- Rollbacks require re-running entire CI build pipelines or manually tracking down old container tags.
+### Without Argo CD (Traditional Push-based CI/CD)
+- External CI runners (Jenkins, GitLab CI, GitHub Actions) need cluster credentials (`kubeconfig`) to deploy.
+- If an admin runs `kubectl edit deployment` directly, the cluster drifts from Git and nobody is alerted.
+- Rollbacks usually mean re-running a pipeline or manually tracking down an old image tag.
 
-### With Argo CD (GitOps Pull Model):
-- **Zero Cluster Secrets in CI**: CI only pushes Docker images and updates Git manifests.
-- **Automated Drift Detection & Self-Healing**: Live cluster state is continuously restored to Git specification.
-- **Auditability**: Every change, deployment, and promotion is recorded in Git commit history.
-- **Instant Rollbacks**: Running `git revert <commit-sha>` immediately restores the previous cluster state.
-- **Centralized Dashboard**: Live visibility into all pods, health probes, logs, and network endpoints.
+### With Argo CD (GitOps Pull Model)
+- **No cluster credentials in CI**: CI only builds and pushes images, then updates the manifests in Git.
+- **Drift detection & self-healing**: The live state is compared to Git continuously and can be restored automatically.
+- **Auditability**: Every change, deployment, and promotion is recorded in Git history.
+- **Simple rollbacks**: Run `git revert <commit-sha>`; with automated sync the cluster follows, otherwise sync manually.
+- **Central dashboard**: Live visibility into resources, health, logs, and sync status.
 
 ---
 
@@ -83,9 +81,9 @@ flowchart LR
                                   │ Argo CD detects diff
                                   ▼
                        ┌──────────────────────┐       ┌────────────────────────┐
-                       │ 5. Argo CD           │  ==>  │ 6. Kubernetes Cluster │
-                       │ ApplicationController│       │ (Pulls v2.0 image &    │
-                       └──────────────────────┘       │  performs rolling-sync)│
+                       │ 5. Argo CD           │  ==>  │ 6. Kubernetes Cluster  │
+                       │ (App Controller)     │       │ (Pulls v2.0 image &    │
+                       └──────────────────────┘       │ performs rolling sync) │
                                                       └────────────────────────┘
 ```
 
@@ -95,13 +93,15 @@ flowchart LR
 
 ## 4. Core Components Deep Dive
 
-| Component | Responsibility | Failure Impact if Down |
+| Component | Responsibility | Impact if Down |
 | :--- | :--- | :--- |
-| **`argocd-server`** (API Server) | Exposes Web UI, gRPC API, CLI access, RBAC enforcement, and SSO authentication. | Web UI and CLI become unreachable; running Kubernetes workloads are unaffected. |
-| **`argocd-repo-server`** | Clones Git repositories and generates raw Kubernetes YAML using Helm, Kustomize, or plugins. | Argo CD cannot check out new commits or render Helm charts. |
-| **`argocd-application-controller`** | The core reconciliation engine. Compares live state with desired state, detects drift, applies changes, and watches CRDs. | Automated sync and self-healing stop; existing pods continue running in cluster. |
-| **`argocd-redis`** | In-memory cache storing repository manifests and cluster resource trees. | Decreased performance; repo-server must re-clone Git repos repeatedly. |
-| **`argocd-dex-server`** | Identity broker enabling SSO integration (GitHub, Google, Okta, OIDC, SAML). | External SSO login fails (local `admin` account still works). |
+| **`argocd-server`** (API Server) | Exposes the Web UI, gRPC/REST API, and CLI access; enforces RBAC and handles SSO authentication. | Web UI and CLI become unreachable; running workloads are unaffected. |
+| **`argocd-repo-server`** | Clones Git repositories and renders raw Kubernetes YAML using Helm, Kustomize, or plugins. | Argo CD cannot fetch new commits or render manifests, so new changes are not picked up. |
+| **`argocd-application-controller`** | Core reconciliation engine. Compares live state with desired state, detects drift, performs syncs, and updates application status. | Automated sync and self-healing stop; existing pods keep running. |
+| **`argocd-applicationset-controller`** | Generates `Application` resources from templates and generators (List, Git, Matrix, etc.). | No new Applications are generated or updated from ApplicationSets; existing Applications keep working. |
+| **`argocd-redis`** | Cache for repository manifests and cluster state. | Degraded performance; manifests must be regenerated more often. |
+| **`argocd-dex-server`** | Identity broker for SSO (GitHub, Google, Okta, OIDC, SAML). | SSO login fails; the local `admin` account still works. |
+| **`argocd-notifications-controller`** *(optional)* | Sends notifications (Slack, email, webhooks) on sync and health events. | Notifications stop; deployments are unaffected. |
 
 ---
 
@@ -109,16 +109,27 @@ flowchart LR
 
 - **Application CRD**: A Kubernetes Custom Resource that connects a Git source (`repoURL`, `targetRevision`, `path`) to a destination (`server`, `namespace`).
 - **Sync Status**:
-  - `Synced`: The live Kubernetes state exactly matches the Git manifests.
-  - `OutOfSync`: A difference exists between Git and the live cluster.
+  - `Synced`: The live state matches the Git manifests.
+  - `OutOfSync`: The live state differs from Git.
+  - `Unknown`: Argo CD cannot determine the comparison (for example, repo or cluster errors).
 - **Health Status**:
-  - `Healthy`: Pods are running, readiness probes pass, and endpoints are active.
-  - `Progressing`: Rolling update in progress.
-  - `Degraded`: CrashLoopBackOff, ImagePullBackOff, or failing probes.
-  - `Missing`: Declared resource does not exist in cluster.
-  - *(Note: An application can be `Synced` but `Degraded` if buggy code is pushed).*
-- **Self-Healing (`selfHeal: true`)**: If someone alters the cluster manually via `kubectl`, Argo CD immediately reverts the change back to Git.
-- **Pruning (`prune: true`)**: If a YAML file is deleted in Git, Argo CD automatically deletes the corresponding resource from the cluster.
+  - `Healthy`: Resources are running and passing their health checks.
+  - `Progressing`: A rollout or other change is still in progress.
+  - `Degraded`: A resource has failed (CrashLoopBackOff, ImagePullBackOff, failing probes).
+  - `Suspended`: A resource is paused (for example, a suspended CronJob or paused rollout).
+  - `Missing`: A declared resource does not exist in the cluster.
+  - `Unknown`: Health could not be assessed.
+  - *(Note: An application can be `Synced` but `Degraded` if a broken image or config is deployed.)*
+- **Automated Sync** (`syncPolicy.automated`): Argo CD syncs automatically when Git changes. The two options below only apply when this is enabled.
+- **Self-Healing (`selfHeal: true`)**: If someone changes a live resource manually (for example, via `kubectl`), Argo CD automatically reverts it to match Git. Default is `false`.
+- **Pruning (`prune: true`)**: If a manifest is removed from Git, Argo CD deletes the corresponding resource from the cluster. Default is `false`.
+
+```yaml
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+```
 
 ---
 
