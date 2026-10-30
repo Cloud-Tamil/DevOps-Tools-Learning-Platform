@@ -9,7 +9,7 @@
 
 > A complete GitOps master reference. This document provides **every manual command, one by one, in strict execution order** to build, configure, deploy, test, troubleshoot, and tear down every Kubernetes deployment strategy, Argo Rollout, and sync policy.
 
-> **Repository**: [`https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap`](https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap)
+> **Repository**: [`https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap`](https://github.com/Learning-Pages/My-ArgoCD-Lap)
 >
 > **Branch**: every command below uses the `${GIT_BRANCH}` variable (set in Section 1) so it works whether your default branch is `main` or `master`.
 
@@ -55,7 +55,7 @@
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap.git
+git clone https://github.com/Learning-Pages/My-ArgoCD-Lap.git
 cd My-ArgoCD-Lap
 
 # Detect your default branch (main or master) and reuse it everywhere
