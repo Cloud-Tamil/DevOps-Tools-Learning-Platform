@@ -13,7 +13,7 @@
 
 > **Complete GitOps Handbook** — Deep-dive theory, core components, hands-on tutorials, interview questions, and a battle-tested enterprise implementation (**ShopSphere**) using the **App-of-Apps** pattern and **Matrix ApplicationSets**.
 >
-> **Configured Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git) *(Branch: `master`)*
+> **Configured Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git) *(Branch: `main`)*
 
 ---
 
@@ -57,47 +57,7 @@ Argo CD is a **declarative, GitOps continuous delivery (CD) tool for Kubernetes*
 
 It runs as an in-cluster controller that continuously compares the **desired state** (declared in your Git repository) with the **live state** (running inside your Kubernetes cluster) and reconciles any drift.
 
-**Flow (ASCII fallback):**
-```text
-Developer ──[git push]──▶ GitHub Repo ──[pull]──▶ Argo CD ──[apply]──▶ Kubernetes
-                                  ▲                   │
-                                  └────────[report]───┘
-```
-
-**Flow (Mermaid):**
-```mermaid
-flowchart LR
-    Dev[Developer] -->|git commit & push| Git[(GitHub Repo<br/>YAML / Helm / Kustomize)]
-    Git -->|Pull Desired State| Argo[Argo CD Controller]
-    K8s[(Kubernetes Cluster<br/>Pods / Deployments / Services)] -->|Report Live State| Argo
-    Argo -->|Reconcile & Self-Heal| K8s
-```
-
-### The Core GitOps Equation
-
-1. **Source of Truth** — Git holds the complete specification of your infrastructure and application manifests.
-2. **Pull Model** — Argo CD pulls changes from Git into Kubernetes (no cluster credentials exposed to external CI).
-3. **Continuous Reconciliation** — If someone manually edits a live deployment with `kubectl`, Argo CD detects drift and reverts it.
-
----
-
-## 2. Why Use Argo CD?
-
-### Without Argo CD (Traditional Push-based CI/CD)
-- External CI runners (Jenkins, GitLab CI, GitHub Actions) require administrative cluster credentials (`kubeconfig`).
-- Manual `kubectl edit` operations cause silent drift from Git.
-- Rollbacks require re-running entire CI pipelines.
-
-### With Argo CD (GitOps Pull Model)
-- **Zero Cluster Secrets in CI** — CI only pushes images and updates Git manifests.
-- **Automated Drift Detection & Self-Healing** — Live state is continuously restored to Git specification.
-- **Auditability** — Every change, deployment, and promotion is recorded in Git commit history.
-- **Instant Rollbacks** — `git revert <commit-sha>` immediately restores the previous cluster state.
-- **Centralized Dashboard** — Live visibility into pods, health probes, logs, and endpoints.
-
----
-
-## 3. End-to-End Workflow
+## 2. End-to-End Workflow
 
 ```text
 ┌──────────────┐       ┌──────────────────────┐       ┌────────────────────────┐
@@ -120,6 +80,37 @@ flowchart LR
 ```
 
 > **Key Rule**: CI builds the image. Argo CD only deploys the configuration that references it.
+
+**Flow:**
+```mermaid
+flowchart LR
+    Dev[Developer] -->|git commit & push| Git[(GitHub Repo<br/>YAML / Helm / Kustomize)]
+    Git -->|Pull Desired State| Argo[Argo CD Controller]
+    K8s[(Kubernetes Cluster<br/>Pods / Deployments / Services)] -->|Report Live State| Argo
+    Argo -->|Reconcile & Self-Heal| K8s
+```
+
+## 3.The Core GitOps Equation
+
+1. **Source of Truth** — Git holds the complete specification of your infrastructure and application manifests.
+2. **Pull Model** — Argo CD pulls changes from Git into Kubernetes (no cluster credentials exposed to external CI).
+3. **Continuous Reconciliation** — If someone manually edits a live deployment with `kubectl`, Argo CD detects drift and reverts it.
+
+---
+
+## 2. Why Use Argo CD?
+
+### Without Argo CD (Traditional Push-based CI/CD)
+- External CI runners (Jenkins, GitLab CI, GitHub Actions) require administrative cluster credentials (`kubeconfig`).
+- Manual `kubectl edit` operations cause silent drift from Git.
+- Rollbacks require re-running entire CI pipelines.
+
+### With Argo CD (GitOps Pull Model)
+- **Zero Cluster Secrets in CI** — CI only pushes images and updates Git manifests.
+- **Automated Drift Detection & Self-Healing** — Live state is continuously restored to Git specification.
+- **Auditability** — Every change, deployment, and promotion is recorded in Git commit history.
+- **Instant Rollbacks** — `git revert <commit-sha>` immediately restores the previous cluster state.
+- **Centralized Dashboard** — Live visibility into pods, health probes, logs, and endpoints.
 
 ---
 
