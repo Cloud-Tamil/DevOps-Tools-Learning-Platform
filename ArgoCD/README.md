@@ -244,7 +244,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 ## Step 6: Clean Up
 
 ```bash
-kind delete cluster --name argocd-cluster
+kind delete cluster --name my-cluster
 ```
 
 ---
