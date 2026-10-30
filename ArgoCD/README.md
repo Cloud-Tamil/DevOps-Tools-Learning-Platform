@@ -2,564 +2,756 @@
   <img src="https://raw.githubusercontent.com/argoproj/argo-cd/master/docs/assets/logo.png" alt="Argo CD logo" width="150">
 </p>
 
-<h1 align="center">🚀 Argo CD & GitOps Master Guide — From Fundamentals to Production Architecture</h1>
+<h1 align="center">🚀 Argo CD & GitOps Master Guide — Complete Manual Command System</h1>
 
 [![ArgoCD](https://img.shields.io/badge/ArgoCD-v2.11.3-orange?logo=argo&logoColor=white)](https://argoproj.github.io/cd/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.28+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.30+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Helm](https://img.shields.io/badge/Helm-v3.14+-0F1689?logo=helm&logoColor=white)](https://helm.sh/)
 [![Kustomize](https://img.shields.io/badge/Kustomize-v5.3+-green?logo=kubernetes&logoColor=white)](https://kubectl.docs.kubernetes.io/guides/introduction/kustomize/)
-[![GitOps](https://img.shields.io/badge/Pattern-App--of--Apps%20%2B%20Matrix%20ApplicationSet-blueviolet)](https://argo-cd.readthedocs.io/)
-[![Repository](https://img.shields.io/badge/GitHub-Learning--Pages%2FMy--ArgoCD--Lap-black?logo=github)](https://github.com/Learning-Pages/My-ArgoCD-Lap.git)
+[![Argo Rollouts](https://img.shields.io/badge/Argo%20Rollouts-v1.7.1-00BFFF?logo=argo&logoColor=white)](https://argoproj.github.io/argo-rollouts/)
+[![Pattern](https://img.shields.io/badge/Pattern-App--of--Apps%20%2B%20Matrix%20ApplicationSet-blueviolet)](https://argo-cd.readthedocs.io/)
 
-> **Complete GitOps Handbook** — Deep-dive theory, core components, hands-on tutorials, interview questions, and a battle-tested enterprise implementation (**ShopSphere**) using the **App-of-Apps** pattern and **Matrix ApplicationSets**.
->
-> **Configured Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git) *(Branch: `main`)*
+A complete, battle-tested GitOps master reference. This document provides **every manual command, one by one, in strict execution order** to build, configure, deploy, test, troubleshoot, and tear down every Kubernetes deployment strategy, Argo Rollout, and sync policy.
 
 ---
 
-## 📑 Table of Contents
+## 📋 Table of Contents
 
-- [PART I — FUNDAMENTALS & ARCHITECTURE](#part-i--fundamentals--architecture)
-  - [1. What is Argo CD?](#1-what-is-argo-cd)
-  - [2. Why Use Argo CD?](#2-why-use-argo-cd)
-  - [3. End-to-End Workflow](#3-end-to-end-workflow)
-  - [4. Core Components Deep Dive](#4-core-components-deep-dive)
-  - [5. Key GitOps Concepts](#5-key-gitops-concepts)
-- [PART II — INSTALLATION & ACCESS](#part-ii--installation--access)
-  - [6. Local Kubernetes Cluster with Kind](#6-local-kubernetes-cluster-with-kind)
-  - [7. Installing Argo CD](#7-installing-argo-cd)
-  - [8. Accessing the Web UI](#8-accessing-the-web-ui)
-  - [9. Admin Password Recovery & Reset](#9-admin-password-recovery--reset)
-  - [10. Installing the Argo CD CLI](#10-installing-the-argo-cd-cli)
-  - [11. Securing Accounts & RBAC](#11-securing-accounts--rbac)
-- [PART III — SHOPSPHERE ENTERPRISE IMPLEMENTATION](#part-iii--shopsphere-enterprise-implementation)
-  - [12. Enterprise App-of-Apps Topology](#12-enterprise-app-of-apps-topology)
-  - [13. Repository Directory Tree](#13-repository-directory-tree)
-  - [14. Bootstrap Manifests](#14-bootstrap-manifests)
-  - [15. 5-Minute Zero-to-Live Bootstrap Runbook](#15-5-minute-zero-to-live-bootstrap-runbook)
-  - [16. Zero-Plaintext Secret Management](#16-zero-plaintext-secret-management)
-  - [17. Environment Promotion Runbook](#17-environment-promotion-runbook)
-- [PART IV — OPERATIONS, CHEAT SHEET & INTERVIEW PREP](#part-iv--operations-cheat-sheet--interview-prep)
-  - [18. Full Control Command Cheat Sheet](#18-full-control-command-cheat-sheet)
-  - [19. Troubleshooting & Common Issues](#19-troubleshooting--common-issues)
-  - [20. Production Best Practices](#20-production-best-practices)
-  - [21. Top Interview Questions & Answers](#21-top-interview-questions--answers)
-  - [22. Recommended Learning Path](#22-recommended-learning-path)
-  - [Appendix A — Complete File Contents](#appendix-a--complete-file-contents)
-
----
-
-# PART I — FUNDAMENTALS & ARCHITECTURE
-
-## 1. What is Argo CD?
-
-Argo CD is a **declarative, GitOps continuous delivery (CD) tool for Kubernetes**.
-
-It runs as an in-cluster controller that continuously compares the **desired state** (declared in your Git repository) with the **live state** (running inside your Kubernetes cluster) and reconciles any drift.
-
-### End-to-End Workflow
-
-```text
-┌──────────────┐       ┌──────────────────────┐       ┌────────────────────────┐
-│ 1. Developer │  ==>  │ 2. CI Pipeline       │  ==>  │ 3. Container Registry  │
-│ pushes code  │       │ (Build & Run Tests)  │       │ (ghcr.io/app:v2.0)     │
-└──────────────┘       └──────────┬───────────┘       └────────────────────────┘
-                                  │
-                                  ▼ Updates image tag
-                       ┌──────────────────────┐
-                       │ 4. Deployment Git    │
-                       │ Repository (YAML)    │
-                       └──────────┬───────────┘
-                                  │ Argo CD detects diff
-                                  ▼
-                       ┌──────────────────────┐       ┌────────────────────────┐
-                       │ 5. Argo CD           │  ==>  │ 6. Kubernetes Cluster │
-                       │ ApplicationController│       │ (Pulls v2.0 image &    │
-                       └──────────────────────┘       │  performs rolling-sync)│
-                                                      └────────────────────────┘
-```
-
-> **Key Rule**: CI builds the image. Argo CD only deploys the configuration that references it.
-
-**Flow:**
-```mermaid
-flowchart LR
-    Dev[Developer] -->|git commit & push| Git[(GitHub Repo<br/>YAML / Helm / Kustomize)]
-    Git -->|Pull Desired State| Argo[Argo CD Controller]
-    K8s[(Kubernetes Cluster<br/>Pods / Deployments / Services)] -->|Report Live State| Argo
-    Argo -->|Reconcile & Self-Heal| K8s
-```
-
-### The Core GitOps Equation
-
-1. **Source of Truth** — Git holds the complete specification of your infrastructure and application manifests.
-2. **Pull Model** — Argo CD pulls changes from Git into Kubernetes (no cluster credentials exposed to external CI).
-3. **Continuous Reconciliation** — If someone manually edits a live deployment with `kubectl`, Argo CD detects drift and reverts it.
+1. [Prerequisites & System Verification](#1-prerequisites--system-verification)
+2. [Project Layout Creation](#2-project-layout-creation)
+3. [Toolchain Installation](#3-toolchain-installation)
+4. [Create Kubernetes Cluster with Kind](#4-create-kubernetes-cluster-with-kind)
+5. [Install Argo CD](#5-install-argocd)
+6. [Access Argo CD UI & CLI Authentication](#6-access-argocd-ui--cli-authentication)
+7. [Install Argo Rollouts Controller & Plugin](#7-install-argo-rollouts-controller--plugin)
+8. [Connect Git Repository & Environment Setup](#8-connect-git-repository--environment-setup)
+9. [Strategy 1 — Rolling Update (Zero Downtime)](#9-strategy-1--rolling-update-zero-downtime)
+10. [Strategy 2 — Recreate (Controlled Outage Window)](#10-strategy-2--recreate-controlled-outage-window)
+11. [Strategy 3 — Blue-Green Deployment (Argo Rollouts)](#11-strategy-3--blue-green-deployment-argo-rollouts)
+12. [Strategy 4 — Canary Deployment (Argo Rollouts)](#12-strategy-4--canary-deployment-argo-rollouts)
+13. [Sync Policy 1 — Manual Synchronization](#13-sync-policy-1--manual-synchronization)
+14. [Sync Policy 2 — Automated Synchronization](#14-sync-policy-2--automated-synchronization)
+15. [Sync Policy 3 — Self-Healing Drift Correction](#15-sync-policy-3--self-healing-drift-correction)
+16. [Sync Policy 4 — Automatic Resource Pruning](#16-sync-policy-4--automatic-resource-pruning)
+17. [Sync Policy 5 — Allow Empty Directory Teardown](#17-sync-policy-5--allow-empty-directory-teardown)
+18. [Sync Waves — Ordered Multi-Tier Orchestration](#18-sync-waves--ordered-multi-tier-orchestration)
+19. [Sync Hooks — PreSync Database Migration Jobs](#19-sync-hooks--presync-database-migration-jobs)
+20. [Git Tracking — Branch vs Semantic Tag vs Commit SHA](#20-git-tracking--branch-vs-semantic-tag-vs-commit-sha)
+21. [GitOps Rollbacks — Declarative vs Emergency CLI](#21-gitops-rollbacks--declarative-vs-emergency-cli)
+22. [App-of-Apps & Matrix ApplicationSets Bootstrap](#22-app-of-apps--matrix-applicationsets-bootstrap)
+23. [Zero-Plaintext Secret Management (Sealed Secrets)](#23-zero-plaintext-secret-management-sealed-secrets)
+24. [Environment Promotion Runbook (Dev -> Staging -> Prod)](#24-environment-promotion-runbook-dev---staging---prod)
+25. [Complete Command Cheat Sheet](#25-complete-command-cheat-sheet)
+26. [Troubleshooting & Diagnostics Matrix](#26-troubleshooting--diagnostics-matrix)
+27. [Full Environment Teardown](#27-full-environment-teardown)
 
 ---
 
-## 2. Why Use Argo CD?
+## 1. Prerequisites & System Verification
 
-### Without Argo CD (Traditional Push-based CI/CD)
-- External CI runners (Jenkins, GitLab CI, GitHub Actions) require administrative cluster credentials (`kubeconfig`).
-- Manual `kubectl edit` operations cause silent drift from Git.
-- Rollbacks require re-running entire CI pipelines.
-
-### With Argo CD (GitOps Pull Model)
-- **Zero Cluster Secrets in CI** — CI only pushes images and updates Git manifests.
-- **Automated Drift Detection & Self-Healing** — Live state is continuously restored to Git specification.
-- **Auditability** — Every change, deployment, and promotion is recorded in Git commit history.
-- **Instant Rollbacks** — `git revert <commit-sha>` immediately restores the previous cluster state.
-- **Centralized Dashboard** — Live visibility into pods, health probes, logs, and endpoints.
-
----
-
-## 4. Core Components Deep Dive
-
-| Component | Responsibility | Impact if Down |
-| :--- | :--- | :--- |
-| **`argocd-server`** | Exposes Web UI, gRPC API, CLI, RBAC, SSO. | UI/CLI unreachable; workloads unaffected. |
-| **`argocd-repo-server`** | Clones Git repos; renders Helm / Kustomize / plugins. | Cannot pull new commits or render charts. |
-| **`argocd-application-controller`** | Core reconciliation engine; compares desired vs live and applies changes. | Automated sync and self-heal stop; existing pods continue running. |
-| **`argocd-redis`** | In-memory cache for manifests and resource trees. | Slower performance; repo-server re-clones repeatedly. |
-| **`argocd-dex-server`** | Identity broker for SSO (GitHub, Google, Okta, OIDC, SAML). | External SSO fails; local `admin` still works. |
-
----
-
-## 5. Key GitOps Concepts
-
-- **Application CRD** — Connects a Git source (`repoURL`, `targetRevision`, `path`) to a destination (`server`, `namespace`).
-- **Sync Status**
-  - `Synced` — Live state exactly matches Git.
-  - `OutOfSync` — A difference exists.
-- **Health Status**
-  - `Healthy` — Pods running, readiness passing, endpoints active.
-  - `Progressing` — Rolling update in progress.
-  - `Degraded` — CrashLoopBackOff, ImagePullBackOff, failing probes.
-  - `Missing` — Declared resource does not exist.
-  - *An application can be `Synced` but `Degraded` (buggy code pushed).*
-- **Self-Healing (`selfHeal: true`)** — Reverts manual `kubectl` changes back to Git.
-- **Pruning (`prune: true`)** — Deletes cluster resources when their YAML is removed from Git.
-
----
-
-# PART II — INSTALLATION & ACCESS
-
-## 6. Local Kubernetes Cluster with Kind
-
-Kind (Kubernetes-in-Docker) runs full local clusters using Docker containers as nodes.
-
-### 6.1 Install the Kind CLI
+### 1.1 Verify Docker Daemon
 
 ```bash
-# Linux (AMD64)
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
-chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
-kind version
+docker --version
+docker ps
 ```
 
-**Version check (must be v0.20+ for full `extraPortMappings` support):**
-
+If Docker permission is denied:
 ```bash
-kind --version | grep -E 'v0\.(2[0-9]|[3-9][0-9])' \
-  || echo "⚠️ Upgrade kind to v0.20 or newer"
+sudo usermod -aG docker $USER && newgrp docker
 ```
-### 6.3 Multi-Node Cluster (1 Control-Plane + 2 Workers)
+
+### 1.2 Verify Memory and CPU Allocation
 
 ```bash
-cat <<EOF | kind create cluster --name shopsphere-ha --config=-
+free -h
+nproc
+```
+*Requirement: At least 4 CPU cores and 8 GB of RAM (minimum 6 GB allocated to Docker).*
+
+---
+
+## 2. Project Layout Creation
+
+```bash
+mkdir -p argocd-mastery-lab/{cluster,scripts,app,apps/{rolling-update,recreate,blue-green,canary},sync-labs/{manual,automated,self-heal,prune,allow-empty,sync-waves,hooks},projects,bootstrap,infrastructure,docs}
+cd argocd-mastery-lab
+```
+
+---
+
+## 3. Toolchain Installation
+
+### 3.1 Install kubectl (v1.30)
+
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+rm kubectl
+kubectl version --client
+```
+
+### 3.2 Install kind (v0.23.0)
+
+```bash
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+kind --version
+```
+
+### 3.3 Install Helm (v3.14+)
+
+```bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version
+```
+
+### 3.4 Install Argo CD CLI (v2.11.3)
+
+```bash
+curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+sudo install -m 555 argocd /usr/local/bin/argocd
+rm argocd
+argocd version --client
+```
+
+### 3.5 Install kustomize (v5.3+)
+
+```bash
+curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+sudo mv kustomize /usr/local/bin/
+kustomize version
+```
+
+### 3.6 Install Argo Rollouts kubectl Plugin
+
+```bash
+curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+chmod +x ./kubectl-argo-rollouts-linux-amd64
+sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+kubectl argo rollouts version
+```
+
+---
+
+## 4. Create Kubernetes Cluster with Kind
+
+### 4.1 Cluster Configuration (`cluster/kind-config.yaml`)
+
+```yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+name: argocd
 nodes:
   - role: control-plane
-    kubeadmConfigPatches:
-      - |
-        kind: InitConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "ingress-ready=true"
     extraPortMappings:
-      - { containerPort: 80,  hostPort: 80,  protocol: TCP }
-      - { containerPort: 443, hostPort: 443, protocol: TCP }
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 30443
+        hostPort: 8443
+        protocol: TCP
   - role: worker
   - role: worker
-EOF
 ```
 
-### 6.4 Kind Cheat Sheet
+### 4.2 Provision Cluster
 
 ```bash
-kind get clusters                                 # List clusters
-kind get nodes --name shopsphere                  # List nodes
-kubectl cluster-info --context kind-shopsphere    # Confirm kubectl context
-kind delete cluster --name shopsphere             # Destroy cluster
-
-# Load local image without pushing to a registry
-docker build -t ghcr.io/Learning-Pages/frontend:sha-3f9a1c2 ./src/frontend
-kind load docker-image ghcr.io/Learning-Pages/frontend:sha-3f9a1c2 --name shopsphere
-
-# Diagnostics
-kind export logs --name shopsphere ./kind-logs
-docker ps --filter "name=shopsphere"
+kind create cluster --config cluster/kind-config.yaml
 ```
 
-### 6.5 Troubleshooting Tips
-- **Port 80/443 in use** — `sudo lsof -i :80 -i :443` and stop the conflicting process.
-- **Docker resources** — Ensure at least **4 CPUs** and **6 GB RAM** in Docker Desktop.
+### 4.3 Verify Cluster Context & Node Readiness
+
+```bash
+kubectl cluster-info --context kind-argocd
+kubectl config use-context kind-argocd
+kubectl get nodes -o wide
+```
+
+Expected output:
+```text
+NAME                   STATUS   ROLES           AGE   VERSION
+argocd-control-plane   Ready    control-plane   45s   v1.30.0
+argocd-worker          Ready    <none>          28s   v1.30.0
+argocd-worker2         Ready    <none>          28s   v1.30.0
+```
 
 ---
 
-## 7. Installing Argo CD
+## 5. Install Argo CD
+
+### 5.1 Create Namespace & Apply Manifests
 
 ```bash
-# 1. Dedicated namespace
 kubectl create namespace argocd
-
-# 2. Pinned production release v2.11.3
 kubectl apply -n argocd --server-side --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.11.3/manifests/install.yaml
-
-# 3. Wait for readiness
-kubectl wait --for=condition=Ready pod --all -n argocd --timeout=300s
-kubectl get pods -n argocd
 ```
+
+### 5.2 Wait for Deployments Rollout
+
+```bash
+kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
+kubectl -n argocd rollout status deploy/argocd-applicationset-controller --timeout=300s
+```
+
+### 5.3 Retrieve Initial Admin Password
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d; echo
+```
+*Save this password.*
 
 ---
 
-## 8. Accessing the Web UI
+## 6. Access Argo CD UI & CLI Authentication
 
-### Option A — Port-Forward (Local Learning)
+### 6.1 Option A: Standard Port-Forward
 
 ```bash
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+kubectl -n argocd port-forward svc/argocd-server 8080:443
 ```
+Open your browser at `https://localhost:8080` (Username: `admin`).
 
-Open `https://localhost:8080` and accept the self-signed certificate.
-
-### Option B — Insecure Mode (Fixes Port-Forward Loops)
-
-**Method 1 — One-Liner Patch**
+### 6.2 Option B: Insecure Mode (Fixes TLS Loop Issues)
 
 ```bash
 kubectl -n argocd patch deployment argocd-server --type json \
   -p '[{"op":"add","path":"/spec/template/spec/containers/0/command/-","value":"--insecure"}]'
 
-kubectl port-forward svc/argocd-server -n argocd 8080:8080
+kubectl -n argocd port-forward svc/argocd-server 8080:8080
 ```
+Open `http://localhost:8080`.
 
-**Method 2 — Edit Deployment**
+### 6.3 Log in via Argo CD CLI
 
 ```bash
-kubectl edit deployment argocd-server -n argocd
-```
-
-Add `- --insecure` directly under `- argocd-server`:
-
-```yaml
-spec:
-  template:
-    spec:
-      containers:
-      - name: argocd-server
-        command:
-        - argocd-server
-        - --insecure
-```
-
-Save (`Ctrl+O`, `Enter`, `Ctrl+X` in nano; `:wq` in vim). Pods roll over automatically.
-
-### Option C — LoadBalancer (Cloud: EKS / AKS / GKE)
-
-```bash
-kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
-kubectl get svc argocd-server -n argocd -w
-```
-
----
-
-## 9. Admin Password Recovery & Reset
-
-### Retrieve Initial Password
-
-```bash
-argocd admin initial-password -n argocd
-
-# Or via kubectl
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d; echo
-```
-
-**Default username**: `admin`
-
-### Reset via Bcrypt
-
-```bash
-NEW_HASH=$(argocd account bcrypt --password 'MyNewPassword2026!')
-
-kubectl -n argocd patch secret argocd-secret -p \
-  "{\"stringData\": {\"admin.password\": \"$NEW_HASH\", \"admin.passwordMtime\": \"$(date +%FT%T%Z)\"}}"
-```
-
----
-
-## 10. Installing the Argo CD CLI
-
-```bash
-# Linux
-curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-sudo install -m 555 argocd /usr/local/bin/argocd && rm argocd
-
-# macOS
-brew install argocd
-
-# Windows
-choco install argocd-cli
-```
-
-### Logging In
-
-```bash
-# Standard API login (port-forward must be running)
-ARGOCD_PW=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d)
+ARGOCD_PW=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
 argocd login localhost:8080 --username admin --password "${ARGOCD_PW}" --insecure
+```
 
-# Core Mode (direct cluster access, no port-forward)
-kubectl config set-context --current --namespace=argocd
-argocd login --core
+Verify session:
+```bash
+argocd account get-user-info
 ```
 
 ---
 
-## 11. Securing Accounts & RBAC
+## 7. Install Argo Rollouts Controller & Plugin
 
-### Update Password + Delete Initial Secret
+### 7.1 Deploy Rollouts Controller
 
 ```bash
-argocd account update-password
-kubectl -n argocd delete secret argocd-initial-admin-secret
+kubectl create namespace argo-rollouts
+kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+kubectl -n argo-rollouts rollout status deploy/argo-rollouts --timeout=300s
 ```
 
-### Configure RBAC (`argocd-rbac-cm`)
+### 7.2 Verify Custom Resource Definitions (CRDs)
 
-```yaml
-# kubectl edit configmap argocd-rbac-cm -n argocd
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-rbac-cm
-  namespace: argocd
-data:
-  policy.default: role:readonly
-  policy.csv: |
-    # Developers can view everything, but only sync Dev applications
-    p, role:developer, applications, get, */*, allow
-    p, role:developer, applications, sync, */*-dev, allow
-    g, dev-team, role:developer
+```bash
+kubectl get crd | grep rollouts.argoproj.io
+```
 
-    # SREs have full administrative control
-    p, role:sre, applications, *, */*, allow
-    g, sre-team, role:sre
+### 7.3 Start Rollouts Web Dashboard (Optional)
+
+```bash
+kubectl argo rollouts dashboard &
+# Access UI at http://localhost:3100
 ```
 
 ---
 
-# PART III — SHOPSPHERE ENTERPRISE IMPLEMENTATION
+## 8. Connect Git Repository & Environment Setup
 
-## 12. Enterprise App-of-Apps Topology
+Set your Git target repository:
 
-```text
-                         ┌──────────────────────────────────────────────┐
-                         │      Root Application (bootstrap/root-app)   │
-                         │    https://github.com/Learning-Pages/        │
-                         │             My-ArgoCD-Lap.git                │
-                         │  targetRevision: master | path: bootstrap    │
-                         └──────────────────────┬───────────────────────┘
-                                                │
-                        ┌───────────────────────┴───────────────────────┐
-                        │                                               │
-           ┌────────────▼───────────┐                     ┌─────────────▼──────────┐
-           │  AppProject: platform  │                     │  AppProject: shopsphere│
-           └────────────┬───────────┘                     └─────────────┬──────────┘
-                        │                                               │
-           ┌────────────▼──────────────┐             ┌──────────────────┴──────────────────┐
-           │   platform-appset.yaml    │             │                                     │
-           │ (git: infrastructure/*)   │             ▼                                     ▼
-           └────────────┬──────────────┘  ┌─────────────────────────┐   ┌──────────────────────────┐
-                        │                 │shopsphere-dev-staging   │   │ shopsphere-prod          │
-                        │                 │(matrix: dev, staging)   │   │ (matrix: prod)           │
-                        │                 │sync: prune=true         │   │ sync: prune=false (SAFE) │
-                        │                 └───────────┬─────────────┘   └────────────┬─────────────┘
-                        │                             │                              │
-            ┌───────────┴───────────┐                 ▼                              ▼
-            ▼                       ▼          12 Applications:               6 Applications:
-     7 Platform Applications:                  • frontend-dev/staging         • frontend-prod
-     • argocd (v2.11.3)                        • auth-dev/staging             • auth-prod
-     • ingress-nginx (v4.11.3)                 • cart-dev/staging             • cart-prod
-     • cert-manager (v1.16.1)                  • checkout-dev/staging         • checkout-prod
-     • sealed-secrets (v2.16.1)                • catalog-dev/staging          • catalog-prod
-     • external-secrets (v0.10.4)              • payments-dev/staging         • payments-prod
-     • monitoring (v65.1.1)                                                   (HPA 4-30, PDB: 3,
-                                                                               RateLimit: 100 req/s)
+```bash
+export GIT_REPO="https://github.com/Learning-Pages/My-ArgoCD-Lap.git"
+echo "Active Git Repo: $GIT_REPO"
+```
+
+If connecting a private repository:
+```bash
+export GITHUB_TOKEN="ghp_yourTokenHere"
+
+kubectl create secret generic shopsphere-repo -n argocd \
+  --from-literal=type=git \
+  --from-literal=url="${GIT_REPO}" \
+  --from-literal=username=git \
+  --from-literal=password="${GITHUB_TOKEN}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n argocd label secret shopsphere-repo "argocd.argoproj.io/secret-type=repository" --overwrite
 ```
 
 ---
 
-## 13. Repository Directory Tree
+## 9. Strategy 1 — Rolling Update (Zero Downtime)
 
-```text
-My-ArgoCD-Lap/
-├── README.md                                  # This file
-├── bootstrap/                                 # App-of-Apps entrypoint
-│   ├── kustomization.yaml                     # Assembles projects and ApplicationSets
-│   ├── projects.yaml                          # AppProject definitions with RBAC
-│   └── root-app.yaml                          # Root Application targeting bootstrap/
-├── apps/                                      # ApplicationSet manifests
-│   ├── platform-appset.yaml                   # Deploys /infrastructure components
-│   ├── shopsphere-appset-dev-staging.yaml     # Matrix generator for dev & staging (prune: true)
-│   └── shopsphere-appset-prod.yaml            # Matrix generator for prod (prune: false)
-├── infrastructure/                            # Platform charts & Kustomize overlays
-│   ├── argocd/ (namespace, kustomization, values, repo-secret)
-│   ├── ingress-nginx/ (kustomization, values)
-│   ├── cert-manager/ (kustomization, values)
-│   ├── sealed-secrets/ (kustomization, values)
-│   ├── external-secrets/ (kustomization, values)
-│   └── monitoring/ (kube-prometheus-stack, values)
-├── charts/shopsphere-service/                 # Unified microservice Helm chart
-│   ├── Chart.yaml & values.yaml               # Pinned tags, probes, non-root securityContext
-│   └── templates/                             # deployment, service, hpa, pdb, servicemonitor,
-│                                              # networkpolicy (DNS port 53 egress), ingress
-└── environments/                              # All 18 environment values overlays
-    ├── dev/     (frontend, auth, cart, checkout, catalog, payments)
-    ├── staging/ (frontend, auth, cart, checkout, catalog, payments)
-    └── prod/    (frontend, auth, cart, checkout, catalog, payments)
+### 9.1 Create Deployment
+
+```bash
+kubectl apply -f apps/rolling-update/deployment.yaml
 ```
 
----
+### 9.2 Create Argo CD Application
 
-## 14. Bootstrap Manifests
-
-### A. Root Application — `bootstrap/root-app.yaml`
-
-> **Key fixes:** `targetRevision: master` (matches repo default branch) and `path: .` with `directory.include: 'bootstrap/*.yaml'` so Argo CD can render files that the kustomization references from `../apps/`.
-
-```yaml
+```bash
+cat <<EOF | kubectl apply -f -
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: rolling-update
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
-  project: platform
+  project: default
   source:
-    repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
+    repoURL: ${GIT_REPO}
     targetRevision: master
-    path: .
-    directory:
-      include: 'bootstrap/*.yaml'
-      recurse: false
+    path: apps/rolling-update
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: default
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-    retry:
-      limit: 5
-      backoff: { duration: 5s, factor: 2, maxDuration: 3m }
+EOF
 ```
 
-> **Alternative:** if you prefer `path: bootstrap`, copy the three ApplicationSet files into `bootstrap/` and use plain `path: bootstrap`. Both work; the `directory.include` form avoids file duplication.
+### 9.3 Wait & Verify 4 Replicas
 
-### B. Bootstrap Kustomization — `bootstrap/kustomization.yaml`
+```bash
+argocd app wait rolling-update --sync --health --timeout 180
+kubectl get pods -l app=shopsphere-rolling -o wide
+```
 
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - projects.yaml
-  - ../apps/platform-appset.yaml
-  - ../apps/shopsphere-appset-dev-staging.yaml
-  - ../apps/shopsphere-appset-prod.yaml
+### 9.4 Execute Zero-Downtime Rolling Update
+
+In Git or via kubectl:
+```bash
+kubectl set image deployment/shopsphere-rolling web=nginx:1.28
+```
+
+Monitor rolling replacement (one pod at a time, maxUnavailable=0):
+```bash
+kubectl rollout status deployment/shopsphere-rolling
+kubectl get pods -l app=shopsphere-rolling
 ```
 
 ---
 
-## 15. 5-Minute Zero-to-Live Bootstrap Runbook
+## 10. Strategy 2 — Recreate (Controlled Outage Window)
+
+### 10.1 Create Recreate Application
 
 ```bash
-# 0. Verify prerequisites
-kind --version | grep -E 'v0\.(2[0-9]|[3-9][0-9])' \
-  || { echo "⚠️ Upgrade kind to v0.20+"; exit 1; }
-kubectl version --client
-
-# 1. Clone the repository
-git clone https://github.com/Learning-Pages/My-ArgoCD-Lap.git
-cd My-ArgoCD-Lap
-
-# 2. Create Kind cluster with ingress ports (80/443)
-cat <<EOF | kind create cluster --name shopsphere --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-  - role: control-plane
-    extraPortMappings:
-      - { containerPort: 80,  hostPort: 80,  protocol: TCP }
-      - { containerPort: 443, hostPort: 443, protocol: TCP }
+cat <<EOF | kubectl apply -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: recreate
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GIT_REPO}
+    targetRevision: master
+    path: apps/recreate
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
 EOF
+```
 
-# 3. Deploy Argo CD (only manual step)
-kubectl apply -k infrastructure/argocd/
-kubectl -n argocd rollout status deploy/argocd-server --timeout=10m
+### 10.2 Observe Downtime Window
 
-# 4. (Private repos only) Register Git credentials
-export GITHUB_TOKEN="ghp_yourTokenHere"
-kubectl create secret generic shopsphere-repo -n argocd \
-  --from-literal=type=git \
-  --from-literal=url="https://github.com/Learning-Pages/My-ArgoCD-Lap.git" \
-  --from-literal=username=git \
-  --from-literal=password="${GITHUB_TOKEN}" \
-  --save-config --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n argocd label secret shopsphere-repo "argocd.argoproj.io/secret-type=repository" --overwrite
+Trigger image change:
+```bash
+kubectl set image deployment/shopsphere-recreate web=nginx:1.28
+```
 
-# 5. Bootstrap App-of-Apps
+Observe all old pods terminate before new ones initialize:
+```bash
+kubectl get pods -l app=shopsphere-recreate -w
+```
+
+---
+
+## 11. Strategy 3 — Blue-Green Deployment (Argo Rollouts)
+
+### 11.1 Deploy Dual Services & Rollout
+
+```bash
+kubectl apply -f apps/blue-green/services.yaml
+kubectl apply -f apps/blue-green/rollout.yaml
+```
+
+### 11.2 Create Blue-Green Application
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blue-green
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GIT_REPO}
+    targetRevision: master
+    path: apps/blue-green
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+EOF
+```
+
+### 11.3 Inspect Rollout State
+
+```bash
+kubectl argo rollouts get rollout shopsphere-bg
+```
+
+### 11.4 Deploy Green Version (Preview)
+
+```bash
+kubectl argo rollouts set image shopsphere-bg web=nginx:1.28
+kubectl argo rollouts get rollout shopsphere-bg
+```
+
+*At this point:*
+- `shopsphere-bg-active` serves production traffic on `nginx:1.27`.
+- `shopsphere-bg-preview` serves internal test traffic on `nginx:1.28`.
+
+### 11.5 Smoke Test Preview Service
+
+```bash
+kubectl port-forward svc/shopsphere-bg-preview 8081:80 &
+curl -I http://localhost:8081
+```
+
+### 11.6 Promote to Active
+
+```bash
+kubectl argo rollouts promote shopsphere-bg
+kubectl argo rollouts get rollout shopsphere-bg
+```
+
+Active service switches immediately to the new ReplicaSet.
+
+### 11.7 Instant Rollback
+
+```bash
+kubectl argo rollouts undo shopsphere-bg
+```
+
+---
+
+## 12. Strategy 4 — Canary Deployment (Argo Rollouts)
+
+### 12.1 Deploy Canary Service & Rollout
+
+```bash
+kubectl apply -f apps/canary/service.yaml
+kubectl apply -f apps/canary/rollout.yaml
+```
+
+### 12.2 Deploy Canary Application
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: canary
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ${GIT_REPO}
+    targetRevision: master
+    path: apps/canary
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+EOF
+```
+
+### 12.3 Trigger Progressive Canary Release
+
+```bash
+kubectl argo rollouts set image shopsphere-canary web=nginx:1.28
+```
+
+### 12.4 Watch Traffic Weight Steps (25% -> 50% -> 100%)
+
+```bash
+kubectl argo rollouts get rollout shopsphere-canary --watch
+```
+
+### 12.5 Interactive Canary Controls
+
+```bash
+# Skip remaining pause and promote immediately
+kubectl argo rollouts promote shopsphere-canary
+
+# Abort rollout in case of error
+kubectl argo rollouts abort shopsphere-canary
+
+# Undo rollout back to stable
+kubectl argo rollouts undo shopsphere-canary
+```
+
+---
+
+## 13. Sync Policy 1 — Manual Synchronization
+
+### 13.1 Deploy Manual Sync Application
+
+```bash
+kubectl create namespace manual-demo || true
+sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/manual/application.yaml | kubectl apply -f -
+```
+
+### 13.2 Observe OutOfSync Status
+
+```bash
+argocd app get manual-sync-demo
+```
+*Notice: Sync Status is OutOfSync. No pods exist yet.*
+
+### 13.3 Manually Trigger Sync
+
+```bash
+argocd app sync manual-sync-demo
+argocd app wait manual-sync-demo --health --timeout 120
+kubectl -n default get pods -l app=shopsphere-rolling
+```
+
+---
+
+## 14. Sync Policy 2 — Automated Synchronization
+
+```bash
+kubectl create namespace automated-demo || true
+sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/automated/application.yaml | kubectl apply -f -
+argocd app wait automated-sync-demo --sync --health --timeout 120
+```
+
+Any new commit pushed to the Git repository will automatically trigger synchronization without running `argocd app sync`.
+
+---
+
+## 15. Sync Policy 3 — Self-Healing Drift Correction
+
+### 15.1 Deploy Self-Heal Demo
+
+```bash
+kubectl create namespace self-heal-demo || true
+sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/self-heal/application.yaml | kubectl apply -f -
+argocd app wait self-heal-demo --sync --health --timeout 120
+```
+
+### 15.2 Introduce Live Cluster Drift
+
+```bash
+kubectl scale deploy shopsphere-rolling --replicas=1
+kubectl get deploy shopsphere-rolling
+```
+
+### 15.3 Watch Argo CD Restore Replicas to 4
+
+```bash
+# Within the reconciliation window (~30s - 3m, or instant on refresh)
+kubectl get deploy shopsphere-rolling -w
+```
+Replicas will automatically scale back to 4 as specified in Git.
+
+---
+
+## 16. Sync Policy 4 — Automatic Resource Pruning
+
+```bash
+kubectl create namespace prune-demo || true
+sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/prune/application.yaml | kubectl apply -f -
+```
+
+### 16.1 Add Temporary ConfigMap
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: temp-config
+  namespace: default
+data:
+  mode: "testing"
+EOF
+```
+
+When removed from Git, Argo CD will delete it from Kubernetes because `prune: true` is configured. Without pruning, it remains as an unmanaged zombie object.
+
+---
+
+## 17. Sync Policy 5 — Allow Empty Directory Teardown
+
+```bash
+kubectl create namespace allow-empty-demo || true
+sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/allow-empty/application.yaml | kubectl apply -f -
+```
+
+*Safety Rule: By default, Argo CD refuses to prune all objects if a folder is empty to protect against commit errors. `allowEmpty: true` explicitly authorizes total destruction.*
+
+---
+
+## 18. Sync Waves — Ordered Multi-Tier Orchestration
+
+### 18.1 Deploy Multi-Wave Application
+
+```bash
+sed "s|<YOUR_GIT_REPO>|${GIT_REPO}|g" sync-labs/sync-waves/all-resources.yaml | kubectl apply -f -
+```
+
+### 18.2 Watch Sequential Tier Rollout
+
+```bash
+kubectl -n shopsphere-waves get pods -w
+```
+
+Execution sequence:
+1. **Wave -1**: `Namespace` (shopsphere-waves)
+2. **Wave 0**: `PostgreSQL 16` Database (waits for readiness probe)
+3. **Wave 1**: `Backend API` (2 replicas, scheduled only after DB is Healthy)
+4. **Wave 2**: `Frontend Web` (2 replicas, scheduled only after API is Healthy)
+
+---
+
+## 19. Sync Hooks — PreSync Database Migration Jobs
+
+### 19.1 Apply PreSync Job
+
+```bash
+kubectl apply -f sync-labs/hooks/migration-job.yaml
+```
+
+### 19.2 Inspect Lifecycle Execution
+
+```bash
+kubectl get jobs db-migration
+```
+The migration job runs **before** deployments update, and on `HookSucceeded` it is automatically cleaned up.
+
+---
+
+## 20. Git Tracking — Branch vs Semantic Tag vs Commit SHA
+
+### 20.1 Floating Branch Tracking (Default)
+
+```bash
+argocd app set rolling-update --revision master
+```
+
+### 20.2 Semantic Version Tag Pinning
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+argocd app set rolling-update --revision v1.0.0
+```
+
+### 20.3 Immutable Commit SHA Pinning
+
+```bash
+COMMIT_SHA=$(git rev-parse HEAD)
+argocd app set rolling-update --revision ${COMMIT_SHA}
+```
+
+---
+
+## 21. GitOps Rollbacks — Declarative vs Emergency CLI
+
+### 21.1 Declarative Rollback (Standard GitOps)
+
+```bash
+git log -n 3 --oneline
+git revert HEAD --no-edit
+git push origin master
+argocd app wait rolling-update --sync --health --timeout 120
+```
+
+### 21.2 Emergency Imperative CLI Rollback
+
+```bash
+# View revision history
+argocd app history rolling-update
+
+# Roll back to revision 1 (disables auto-sync to avoid immediate re-sync)
+argocd app rollback rolling-update 1
+```
+
+---
+
+## 22. App-of-Apps & Matrix ApplicationSets Bootstrap
+
+### 22.1 Apply AppProjects
+
+```bash
 kubectl apply -f bootstrap/projects.yaml
-kubectl apply -f bootstrap/root-app.yaml
+```
 
-# 6. Wait for the root app, then all children
+### 22.2 Deploy Root Application
+
+```bash
+kubectl apply -f bootstrap/root-app.yaml
+```
+
+### 22.3 Monitor 25 Applications Fan-Out
+
+```bash
 argocd app wait root --sync --health --timeout 600
 kubectl -n argocd get applications
-
-# Optional: watch live updates
-kubectl -n argocd get applications -w
 ```
 
 ---
 
-## 16. Zero-Plaintext Secret Management
+## 23. Zero-Plaintext Secret Management (Sealed Secrets)
 
-### Bitnami Sealed Secrets
+### 23.1 Fetch Cluster Public Key
 
 ```bash
-# 1. Fetch cluster public key
 kubeseal --fetch-cert \
   --controller-name=sealed-secrets-controller \
   --controller-namespace=sealed-secrets > pub-sealed-secrets.pem
+```
 
-# 2. Encrypt a secret into a commit-safe manifest
+### 23.2 Encrypt Secret into Git-Safe YAML
+
+```bash
 kubectl create secret generic checkout-db-secret \
   --namespace shopsphere-prod \
   --from-literal=password='SuperSecretProdPW123!' \
   --dry-run=client -o yaml | \
   kubeseal --format yaml --cert pub-sealed-secrets.pem > environments/prod/sealed-checkout-secret.yaml
 
-# 3. Commit safely
 git add environments/prod/sealed-checkout-secret.yaml
 git commit -m "chore: add sealed checkout secret"
 git push origin master
@@ -567,122 +759,74 @@ git push origin master
 
 ---
 
-## 17. Environment Promotion Runbook
+## 24. Environment Promotion Runbook (Dev -> Staging -> Prod)
 
-```text
-Dev (tag: sha-abc1234) ──[Smoke Test]──▶ Staging (replicas: 2) ──[SRE Approval]──▶ Prod (tag: 2.4.1, PDB: 3)
-```
+### 24.1 Promote to Dev (Automated by CI)
 
 ```bash
-# 1. Dev Promotion (automated by CI on image build)
 sed -i 's/tag: .*/tag: sha-3f9a1c2/' environments/dev/values-cart.yaml
 git commit -am "ci: deploy cart sha-3f9a1c2 to dev" && git push origin master
+```
 
-# 2. Staging Promotion (automated PR for integration tests)
+### 24.2 Promote to Staging (Integration Testing)
+
+```bash
 sed -i 's/tag: .*/tag: sha-3f9a1c2/' environments/staging/values-cart.yaml
-git commit -am "chore(staging): promote cart to staging" && git push origin master
+git commit -am "chore(staging): promote cart sha-3f9a1c2" && git push origin master
+```
 
-# 3. Production Release (SemVer tag)
+### 24.3 Promote to Production (SemVer Release, prune: false)
+
+```bash
 sed -i 's/tag: .*/tag: "2.4.1"/' environments/prod/values-cart.yaml
 git commit -am "release(cart): version 2.4.1 to prod" && git push origin master
 ```
 
 ---
 
-# PART IV — OPERATIONS, CHEAT SHEET & INTERVIEW PREP
-
-## 18. Full Control Command Cheat Sheet
+## 25. Complete Command Cheat Sheet
 
 ```bash
-# --- Status & Listing ---
-argocd app list                                       # List all apps with sync + health
-argocd app get frontend-prod                          # Detailed status
-argocd app get root --hard-refresh                    # Bypass Git cache
+# Applications Management
+argocd app list                                          # List all apps
+argocd app get root --hard-refresh                       # Invalidate cache & refresh
+argocd app sync -l env=prod                              # Sync all production apps
+argocd app diff frontend-prod                            # View live diff against Git
+argocd app logs frontend-prod --follow                   # Stream container logs
 
-# --- Synchronization ---
-argocd app sync frontend-dev                          # Sync one app
-argocd app sync -l env=prod                           # Sync all prod apps
-argocd app sync frontend-prod --prune                 # Force manual prune
+# Rollouts Management
+kubectl argo rollouts list rollouts                      # List rollouts
+kubectl argo rollouts get rollout shopsphere-canary      # Live status
+kubectl argo rollouts promote shopsphere-canary          # Promote canary step
+kubectl argo rollouts abort shopsphere-canary            # Abort rollout
+kubectl argo rollouts undo shopsphere-canary             # Revert rollout
 
-# --- Diffs & Rollbacks ---
-argocd app diff frontend-prod                         # Show live diff vs Git
-argocd app history frontend-prod                      # Revision history
-argocd app rollback frontend-prod 2                   # Roll back to revision 2
-
-# --- Logs & Monitoring ---
-argocd app logs frontend-prod --follow                # Stream container logs
-kubectl get hpa -n shopsphere-prod                    # Autoscalers (min: 4, max: 30)
-kubectl get pdb -n shopsphere-prod                    # PodDisruptionBudgets (minAvailable: 3)
-
-# --- Wait with timeout (avoids hanging scripts) ---
-argocd app wait frontend-prod --sync --health --timeout 300
+# Cluster Diagnostics
+kubectl -n argocd logs deploy/argocd-server --tail=50
+kubectl -n argocd logs deploy/argocd-repo-server --tail=50
+kubectl -n argocd logs statefulset/argocd-application-controller --tail=50
 ```
 
 ---
 
-## 19. Troubleshooting & Common Issues
+## 26. Troubleshooting & Diagnostics Matrix
 
-| Symptom | Root Cause | Fix |
-| :--- | :--- | :--- |
-| **`Select at least one resource`** | Checkboxes unchecked, or branch mismatch. | Click `[✓] Select All` in UI, or run `argocd app sync root`. |
-| **`Branch not found` / 0 manifests** | Git branch is `master`, manifest uses `main`. | Update `root-app.yaml` → `targetRevision: master`, `path: .` with `directory.include`. |
-| **`values-X.yaml: no such file`** | Missing overlay for a microservice. | `ls -la environments/dev/ environments/staging/ environments/prod/` — ensure all 18 files exist. |
-| **`ComparisonError: repo not found`** | Private repo without credentials. | `kubectl apply -f infrastructure/argocd/repo-secret.yaml`. |
-| **`Platform apps OutOfSync forever`** | Kustomize `helmCharts` requires `--enable-helm`. | `kubectl -n argocd patch cm argocd-cm --type merge -p '{"data":{"kustomize.buildOptions":"--enable-helm"}}'`. |
-| **`shopsphere-prod won't prune`** | `prune: false` by design in prod. | Manual: `argocd app sync <service>-prod --prune`. |
-| **`cert-manager CRDs OutOfSync`** | CRDs exceed client-side 256 KB limit. | `ServerSideApply=true` in `platform-appset.yaml`. |
-| **`ImagePullBackOff`** | Placeholder images not pushed. | `docker build -t ghcr.io/Learning-Pages/frontend:sha-3f9a1c2 .` and push. |
-| **`file is outside allowed path`** | Kustomization references `../apps/` while root app has `path: bootstrap`. | Use `path: .` + `directory.include: 'bootstrap/*.yaml'` (see §14A). |
+| Symptom | Cause | One-Line Fix |
+|---|---|---|
+| `ComparisonError: branch not found` | Branch is `master`, not `main` | `argocd app set <app> --revision master` |
+| `file is outside allowed path` | Kustomize uses `../` beyond path | Point `root-app` to `path: .` with `directory.include` |
+| Stuck in `OutOfSync` | Helm plugin missing | `kubectl -n argocd patch cm argocd-cm --type merge -p '{"data":{"kustomize.buildOptions":"--enable-helm"}}'` |
+| `kubectl: connection refused` | Port-forward died | Rerun `./scripts/access-argocd.sh` |
+| CRD too large for client-side apply | Kubernetes 256KB annotation limit | Add `ServerSideApply=true` to `syncOptions` |
 
 ---
 
-## 20. Production Best Practices
+## 27. Full Environment Teardown
 
-1. **Protect Production with `prune: false`** — Never enable automated pruning in production. A Git file rename must not cause instant downtime.
-2. **Use `$values/...` Root Reference** — In ApplicationSets, always reference `$values/environments/...` so paths resolve from the repo root.
-3. **Always Add Finalizers** — Set `resources-finalizer.argocd.argoproj.io` on every Application to prevent orphaned resources.
-4. **Permit DNS Egress in NetworkPolicies** — Non-root pods need explicit UDP/TCP port 53 egress to `kube-system` for CoreDNS.
-5. **Pin Releases** — Never use `:latest` or mutable tags. Use Git SHAs (`sha-3f9a1c2`) in Dev/Staging and SemVer tags (`v2.4.1`) in Prod.
-6. **Timeout Every Wait** — `argocd app wait ... --timeout 300` in scripts; avoids CI hangs.
-7. **Vendor the Argo CD logo** — Copy `docs/assets/logo.png` into your own repo to avoid upstream branch restructures breaking your header.
+```bash
+# Delete Kind cluster
+kind delete cluster --name argocd
 
----
-
-## 21. Top Interview Questions & Answers
-
-**Q1. What is Argo CD and how does it fit into a DevOps pipeline?**
-> Argo CD is a declarative GitOps CD tool for Kubernetes. CI tools (Jenkins, GitHub Actions) build images; Argo CD is responsible for deploying and continuously reconciling those manifests into the cluster.
-
-**Q2. Difference between `Synced` and `Healthy`?**
-> `Synced` = live specs match Git. `Healthy` = resources are functioning. An app can be `Synced` but `Degraded` (e.g., `CrashLoopBackOff`).
-
-**Q3. What is Configuration Drift, and how does Argo CD handle it?**
-> Drift occurs when someone changes the cluster manually (e.g., `kubectl scale`). Argo CD marks the app `OutOfSync`. With `selfHeal: true`, it auto-reverts to Git.
-
-**Q4. How does rollback work in GitOps?**
-> Preferred rollback is `git revert <sha> && git push`. Argo CD then applies the previous state. `argocd app rollback` exists but disables auto-sync, so use only for emergency triage.
-
-**Q5. What is the App-of-Apps pattern?**
-> A single "Root Application" manages other Argo CD Applications and ApplicationSets. An entire cluster with dozens of services and platform tools can be bootstrapped by applying one YAML file.
-
----
-
-## 22. Recommended Learning Path
-
-1. **Kubernetes Core** — Pods, Deployments, Services, Ingress, Namespaces, ConfigMaps, Secrets, RBAC.
-2. **Declarative Packaging** — Helm charts, Kustomize overlays.
-3. **Local Practice** — Kind / Minikube cluster + Argo CD installation.
-4. **GitOps Automation** — `root-app`, automated sync, self-healing.
-5. **Enterprise Delivery** — ApplicationSets, Sealed Secrets, Prometheus monitoring, zero-downtime rolling updates.
-
----
-
-# Appendix A — Complete File Contents
-
-All files referenced above, complete and ready to copy into the repo.
-
-## A.1 `b
-
----
-
-*ShopSphere GitOps Manual — Maintained for Zero-Downtime Releases and High-Availability Kubernetes Operations.*
+# Verify removal
+kind get clusters
+```
