@@ -94,6 +94,28 @@ rollouts:
      kubectl get pods -n argo-rollouts
 access:
 	./scripts/access-argocd.sh
+ Manually Edit the ConfigMap
+If you prefer to modify the configuration file rather than the deployment, you can edit the argocd-cmd-params-cm ConfigMap.
+
+Open the ConfigMap for editing:
+
+bash
+kubectl edit configmap argocd-cmd-params-cm -n argocd
+In the data section, manually add or modify the following line:
+
+yaml
+data:
+  server.insecure: "true"
+Save and exit, then manually restart the server for the changes to take effect:
+
+bash
+kubectl rollout restart deployment argocd-server -n argocd
+⚠️ Key Reminder
+Regardless of which method you use, after the modification is complete, make sure to change your port forwarding command to map to port 80 (HTTP):
+
+bash
+kubectl port-forward svc/argocd-server -n argocd 8081:80
+
 clean:
 	./scripts/cleanup.sh
 ```
