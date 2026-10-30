@@ -73,11 +73,10 @@ nproc
 
 ---
 
-## 2. Project Layout Creation
+## 2. Project folder
 
 ```bash
-mkdir -p argocd-mastery-lab/{cluster,scripts,app,apps/{rolling-update,recreate,blue-green,canary},sync-labs/{manual,automated,self-heal,prune,allow-empty,sync-waves,hooks},projects,bootstrap,infrastructure,docs}
-cd argocd-mastery-lab
+[`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git)
 ```
 
 ---
