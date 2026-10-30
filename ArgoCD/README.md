@@ -184,13 +184,13 @@ kind version
 Create a local Kubernetes cluster with a descriptive name:
 
 ```bash
-kind create cluster --name argocd-cluster
+kind create cluster --name my-cluster
 ```
 
 Verify that `kubectl` points to the new cluster:
 
 ```bash
-kubectl cluster-info --context kind-argocd-cluster
+kubectl cluster-info --context kind-my-cluster
 ```
 
 ---
