@@ -57,7 +57,7 @@ Argo CD is a **declarative, GitOps continuous delivery (CD) tool for Kubernetes*
 
 It runs as an in-cluster controller that continuously compares the **desired state** (declared in your Git repository) with the **live state** (running inside your Kubernetes cluster) and reconciles any drift.
 
-## 2. End-to-End Workflow
+### End-to-End Workflow
 
 ```text
 ┌──────────────┐       ┌──────────────────────┐       ┌────────────────────────┐
@@ -90,7 +90,7 @@ flowchart LR
     Argo -->|Reconcile & Self-Heal| K8s
 ```
 
-## 3.The Core GitOps Equation
+### The Core GitOps Equation
 
 1. **Source of Truth** — Git holds the complete specification of your infrastructure and application manifests.
 2. **Pull Model** — Argo CD pulls changes from Git into Kubernetes (no cluster credentials exposed to external CI).
@@ -155,15 +155,6 @@ Kind (Kubernetes-in-Docker) runs full local clusters using Docker containers as 
 # Linux (AMD64)
 curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
 chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
-
-# macOS
-brew install kind
-
-# Windows
-choco install kind
-# or
-winget install Kubernetes.kind
-
 kind version
 ```
 
@@ -173,31 +164,6 @@ kind version
 kind --version | grep -E 'v0\.(2[0-9]|[3-9][0-9])' \
   || echo "⚠️ Upgrade kind to v0.20 or newer"
 ```
-
-### 6.2 Single-Node Cluster (Ingress-ready)
-
-```bash
-cat <<EOF | kind create cluster --name shopsphere --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-  - role: control-plane
-    kubeadmConfigPatches:
-      - |
-        kind: InitConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "ingress-ready=true"
-    extraPortMappings:
-      - containerPort: 80
-        hostPort: 80
-        protocol: TCP
-      - containerPort: 443
-        hostPort: 443
-        protocol: TCP
-EOF
-```
-
 ### 6.3 Multi-Node Cluster (1 Control-Plane + 2 Workers)
 
 ```bash
