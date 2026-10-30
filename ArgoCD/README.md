@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/argoproj/argo-cd/master/docs/assets/logo.png" alt="Argo CD logo" width="150">
 </p>
 
-<h1 align="center">🚀 Argo CD & GitOps Master Guide — Complete Manual Command System</h1>
+<h1 align="center">🚀 Argo CD & GitOps Master Guide - Complete Manual Command System</h1>
 
 [![ArgoCD](https://img.shields.io/badge/ArgoCD-v2.11.3-orange?logo=argo&logoColor=white)](https://argoproj.github.io/cd/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.30+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
@@ -12,6 +12,7 @@
 [![Pattern](https://img.shields.io/badge/Pattern-App--of--Apps%20%2B%20Matrix%20ApplicationSet-blueviolet)](https://argo-cd.readthedocs.io/)
 
 > A complete, battle-tested GitOps master reference. This document provides every manual command, one by one, in strict execution order to build, configure, deploy, test, troubleshoot, and tear down every Kubernetes deployment strategy, Argo Rollout, and sync policy.
+
 > **Configured Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap.git`](https://github.com/Learning-Pages/My-ArgoCD-Lap.git) *(Branch: `main`)*
 
 ---
