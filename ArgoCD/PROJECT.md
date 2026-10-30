@@ -88,7 +88,7 @@ cluster:
       kubectl get pods
 argocd:
 	./scripts/install-argocd.sh
-     kubectl get nodes -n argocd
+     kubectl get pods -n argocd
 rollouts:
 	./scripts/install-rollouts.sh
 access:
