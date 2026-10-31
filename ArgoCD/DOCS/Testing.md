@@ -2,7 +2,7 @@
 
 A runbook for deploying applications with **Manual Sync** in Argo CD, including progressive delivery (Argo Rollouts), environment promotion, break-glass hotfixes, and secret provisioning.
 
-**Repo:** `https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap`
+**Repo:** `https://github.com/Learning-Pages/My-ArgoCD-Lap`
 
 ## Table of Contents
 
