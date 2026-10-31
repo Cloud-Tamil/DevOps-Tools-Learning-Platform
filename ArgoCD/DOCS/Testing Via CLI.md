@@ -47,7 +47,7 @@ export GIT_BRANCH=main
 
 To configure an application for **Manual Deployment**, omit the `automated` block inside `spec.syncPolicy`.
 
-### Manual Application Manifest (`apps/rolling-update/application-manual.yaml`)
+### Manual Application Manifest (`apps/rolling-update/application.yaml`)
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
