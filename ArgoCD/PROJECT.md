@@ -11,7 +11,7 @@
 
 > **Repository**: [`https://github.com/Learning-Pages/My-ArgoCD-Lap`](https://github.com/Learning-Pages/My-ArgoCD-Lap)
 >
-> **Branch**: every command below uses the `${GIT_BRANCH}` variable (set in Section 1) so it works whether your default branch is `main` or `master`.
+> **Branch**: every command below uses the `${GIT_BRANCH}` variable and every Application uses `${GIT_REPO}` (both set in Section 1), so it works whether your default branch is `main` or `master`.
 
 ---
 
@@ -60,54 +60,111 @@ cd My-ArgoCD-Lap
 
 # Detect your default branch (main or master) and reuse it everywhere
 export GIT_BRANCH=$(git branch --show-current)
-echo "Active branch: ${GIT_BRANCH}"
+
+# Repository URL reused by every Argo CD Application in this guide
+export GIT_REPO="https://github.com/Learning-Pages/My-ArgoCD-Lap.git"
+
+echo "Active repo: ${GIT_REPO}  (branch: ${GIT_BRANCH})"
 ```
 
-> If you open a new terminal later, `cd` into the repo and run the `export GIT_BRANCH=...` line again.
+> If you open a new terminal later, `cd` into the repo and run both `export` lines again.
 
 ---
 
 ## 2. Script Permissions & Makefile Shortcuts
 
-Make the helper scripts executable:
+All helper scripts must be executable before use. Run this **once** after cloning:
 
 ```bash
+# Make the helper scripts executable:
 chmod +x scripts/*.sh
 ```
 
-Optional shortcuts. Save this as a `Makefile` in the repo root (recipe lines must start with a **TAB**, not spaces):
-
-```makefile
-.PHONY: tools cluster argocd rollouts access clean
-
-tools:
-	./scripts/install-tools.sh
-
-cluster:
-	./scripts/create-cluster.sh
-	kubectl get nodes
-	kubectl get pods -A
-
-argocd:
-	./scripts/install-argocd.sh
-	kubectl get pods -n argocd
-
-rollouts:
-	./scripts/install-rollouts.sh
-	kubectl get pods -n argo-rollouts
-
-access:
-	./scripts/access-argocd.sh
-
-clean:
-	./scripts/cleanup.sh
+### 2.1 Install Tools
+Installs missing CLI tools (kubectl, kind/k3d, argocd CLI, etc.).
+```bash
+make install-tools
+# or
+./scripts/install-tools.sh
 ```
 
-Usage: `make tools`, `make cluster`, `make argocd`, `make rollouts`, `make access`, `make clean`.
+### 2.2 Create Cluster
+Provisions the local Kubernetes cluster and prints node/pod status.
+```bash
+make create-cluster
+# or
+./scripts/create-cluster.sh
+
+# verify
+kubectl get nodes
+kubectl get pods -A
+```
+
+### 2.3 Install Argo CD
+Installs Argo CD into the `argocd` namespace.
+```bash
+make install-argocd
+# or
+./scripts/install-argocd.sh
+
+# wait for pods to become Running (Ctrl+C to stop watching)
+kubectl get pods -n argocd -w
+```
+
+### 2.4 Install Argo Rollouts
+Installs the Rollouts controller (namespace `argo-rollouts`) and the `kubectl argo rollouts` plugin.
+```bash
+make install-rollouts
+# or
+./scripts/install-rollouts.sh
+
+# verify
+kubectl get pods -n argo-rollouts
+kubectl argo rollouts version
+```
+
+### 2.5 Access Argo CD
+Starts a port-forward to the Argo CD server (`https://localhost:8080`) and prints the initial admin password.
+```bash
+make access-argocd
+# or
+./scripts/access-argocd.sh
+```
+
+### 2.6 Clean Everything
+Deletes the cluster and all associated resources.
+```bash
+make clean
+# or
+./scripts/cleanup.sh
+```
+
+### 2.7 Verify the Setup
+After completing all steps, confirm everything is healthy:
+```bash
+# 1. Cluster reachable
+kubectl cluster-info
+kubectl get nodes
+
+# 2. Argo CD healthy
+kubectl get pods -n argocd
+kubectl get svc  -n argocd
+
+# 3. Argo Rollouts healthy
+kubectl get pods -n argo-rollouts
+kubectl argo rollouts version
+
+# 4. Argo CD UI reachable (port-forward must be running)
+curl -k https://localhost:8080
+```
+
+**Make targets:** `make install-tools`, `make create-cluster`, `make install-argocd`, `make install-rollouts`, `make access-argocd`, `make clean`.
+
+---
 
 > Sections 3 – 7 show the same steps **manually**. Use either the scripts/Makefile **or** the manual commands, not both.
 >
-> If you use `make access` and hit TLS redirect loops, enable insecure (HTTP) mode as described in [Section 6.2](#62-option-b-insecure-http-mode--fixes-tls-redirect-loops). You can also do it by editing the ConfigMap by hand:
+> If you use `make access-argocd` and hit TLS redirect loops, enable insecure (HTTP) mode as described in [Section 6.2](#62-option-b-insecure-http-mode--fixes-tls-redirect-loops). You can also do it by editing the ConfigMap by hand:
 >
 > ```bash
 > kubectl edit configmap argocd-cmd-params-cm -n argocd
@@ -123,40 +180,35 @@ Usage: `make tools`, `make cluster`, `make argocd`, `make rollouts`, `make acces
 > Then restart the server and forward port **80** (HTTP) instead of 443:
 >
 > ```bash
-> kubectl rollout restart deployment argocd-server -n argocd
-> kubectl port-forward svc/argocd-server -n argocd 8080:80
+> kubectl -n argocd rollout restart deployment argocd-server
+> kubectl -n argocd port-forward svc/argocd-server 8080:80
 > ```
 
 ---
 
 ## 3. Toolchain Installation (Manual)
 
-### 3.1 Install kubectl (v1.30)
+The commands below are for **Linux amd64**. On macOS use Homebrew (`brew install kubectl kind argocd helm`). Docker (or another container runtime supported by Kind) must already be installed and running.
+
+### 3.1 kubectl
 
 ```bash
-curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl"
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 rm kubectl
 kubectl version --client
 ```
 
-### 3.2 Install kind (v0.23.0)
+### 3.2 Kind
 
 ```bash
 curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/kind
-kind --version
+kind version
 ```
 
-### 3.3 Install Helm (v3.14+)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-helm version
-```
-
-### 3.4 Install Argo CD CLI (v2.11.3)
+### 3.3 Argo CD CLI
 
 ```bash
 curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.11.3/argocd-linux-amd64
@@ -165,22 +217,17 @@ rm argocd
 argocd version --client
 ```
 
-### 3.5 Install kustomize (v5.3+)
+### 3.4 Helm
 
 ```bash
-curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-sudo mv kustomize /usr/local/bin/
-kustomize version
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+rm get_helm.sh
+helm version
 ```
 
-### 3.6 Install Argo Rollouts kubectl Plugin (v1.7.1)
-
-```bash
-curl -LO https://github.com/argoproj/argo-rollouts/releases/download/v1.7.1/kubectl-argo-rollouts-linux-amd64
-chmod +x ./kubectl-argo-rollouts-linux-amd64
-sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-kubectl argo rollouts version
-```
+> Kustomize is built into `kubectl` (`kubectl kustomize`, `kubectl apply -k`), so no separate install is required. The Argo Rollouts `kubectl` plugin is installed in [Section 7.2](#72-install-the-kubectl-argo-rollouts-plugin) and `kubeseal` in [Section 23.1](#231-install-the-sealed-secrets-controller-and-kubeseal-cli).
 
 ---
 
@@ -221,7 +268,7 @@ kubectl config use-context kind-argocd
 kubectl get nodes -o wide
 ```
 
-Expected output:
+Expected output (abridged):
 ```text
 NAME                   STATUS   ROLES           AGE   VERSION
 argocd-control-plane   Ready    control-plane   45s   v1.30.0
@@ -316,13 +363,22 @@ kubectl apply -n argo-rollouts \
 kubectl -n argo-rollouts rollout status deploy/argo-rollouts --timeout=300s
 ```
 
-### 7.2 Verify Custom Resource Definitions (CRDs)
+### 7.2 Install the `kubectl argo rollouts` Plugin
+
+```bash
+curl -LO https://github.com/argoproj/argo-rollouts/releases/download/v1.7.1/kubectl-argo-rollouts-linux-amd64
+chmod +x kubectl-argo-rollouts-linux-amd64
+sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+kubectl argo rollouts version
+```
+
+### 7.3 Verify Custom Resource Definitions (CRDs)
 
 ```bash
 kubectl get crd | grep argoproj.io
 ```
 
-### 7.3 Start Rollouts Web Dashboard (Optional)
+### 7.4 Start Rollouts Web Dashboard (Optional)
 
 ```bash
 kubectl argo rollouts dashboard &
@@ -333,10 +389,9 @@ kubectl argo rollouts dashboard &
 
 ## 8. Connect Git Repository & Environment Setup
 
-Set your Git target repository (same org and repo as Section 1):
+Confirm the variables from Section 1 are still set in this terminal:
 
 ```bash
-export GIT_REPO="https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap.git"
 echo "Active Git Repo: ${GIT_REPO}  (branch: ${GIT_BRANCH})"
 ```
 
@@ -345,14 +400,14 @@ A **public** repository needs nothing more. For a **private** repository, regist
 ```bash
 export GITHUB_TOKEN="<your-github-personal-access-token>"
 
-kubectl create secret generic shopsphere -n argocd \
+kubectl create secret generic repo-my-argocd-lap -n argocd \
   --from-literal=type=git \
   --from-literal=url="${GIT_REPO}" \
   --from-literal=username=git \
   --from-literal=password="${GITHUB_TOKEN}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl -n argocd label secret shopsphere "argocd.argoproj.io/secret-type=repository" --overwrite
+kubectl -n argocd label secret repo-my-argocd-lap "argocd.argoproj.io/secret-type=repository" --overwrite
 unset GITHUB_TOKEN
 ```
 
@@ -778,9 +833,9 @@ metadata:
 
 ### 19.2 Inspect Lifecycle Execution
 
-In one terminal:
+In one terminal (`--line-buffered` makes `grep` print live instead of waiting for a full buffer):
 ```bash
-kubectl get jobs -A -w | grep db-migration
+kubectl get jobs -A -w | grep --line-buffered db-migration
 ```
 
 In another, trigger a sync:
@@ -884,8 +939,12 @@ helm install sealed-secrets sealed-secrets/sealed-secrets \
   --namespace sealed-secrets --create-namespace \
   --set fullnameOverride=sealed-secrets-controller
 kubectl -n sealed-secrets rollout status deploy/sealed-secrets-controller --timeout=180s
+```
 
-KUBESEAL_VERSION=$(curl -s https://api.github.com/repos/bitnami-labs/sealed-secrets/tags | grep -m1 '"name"' | cut -d '"' -f4 | cut -c 2-)
+Install `kubeseal` with an **explicit version** (check <https://github.com/bitnami-labs/sealed-secrets/releases> for the latest and put the number below, without the leading `v`). Auto-detecting it from the tags API is fragile because that list also contains Helm chart tags.
+
+```bash
+export KUBESEAL_VERSION="<latest-version-without-v>"   # e.g. 0.27.1
 curl -OL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz"
 tar -xvzf kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz kubeseal
 sudo install -m 755 kubeseal /usr/local/bin/kubeseal
@@ -918,7 +977,7 @@ git commit -m "chore: add sealed checkout secret"
 git push origin ${GIT_BRANCH}
 ```
 
-> Only the **sealed** YAML goes into Git. Never write the plaintext password into a file, command history, or README.
+> Only the **sealed** YAML goes into Git. Never write the plaintext password into a file, command history, or README. The public key file (`pub-sealed-secrets.pem`) is safe to share, but you do not need to commit it.
 
 ---
 
@@ -988,6 +1047,8 @@ kubectl -n argocd logs statefulset/argocd-application-controller --tail=50
 | `CRD too large` / annotation over 256KB | Client-side apply annotation limit | Add `ServerSideApply=true` to `syncOptions` |
 | My `kubectl set image` / `scale` keeps reverting | `selfHeal: true` restores the Git state | Change the manifest in Git and push |
 | `argocd app rollback` fails | Auto-sync is enabled | `argocd app set <app> --sync-policy none` first (Section 21.2) |
+| `kubectl argo rollouts` → `unknown command "argo"` | Plugin not installed | Follow Section 7.2 |
+| `repository not found` / auth error on sync | Wrong org in repo URL, or private repo without credentials | Re-check `echo ${GIT_REPO}` and Section 8 |
 
 ---
 
