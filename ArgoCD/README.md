@@ -27,7 +27,11 @@
   - [Step 3: Install Argo CD](#step-3-install-argo-cd)
   - [Step 4: Access the Argo CD UI](#step-4-access-the-argo-cd-ui)
   - [Step 5: Deploy Your First Application](#step-5-deploy-your-first-application)
-  - [Step 6: Clean Up](#step-6-clean-up)
+  - [Step 6: Test GitOps Behavior (Drift, Self-Heal, Rollback)](#step-6-test-gitops-behavior-drift-self-heal-rollback)
+  - [Step 7: Clean Up](#step-7-clean-up)
+- [Troubleshooting](#troubleshooting)
+- [Quick Command Cheat Sheet](#quick-command-cheat-sheet)
+- [Further Reading](#further-reading)
 
 ---
 
@@ -70,6 +74,16 @@ flowchart LR
 - **Auditability**: Every change, deployment, and promotion is recorded in Git history.
 - **Simple rollbacks**: Run `git revert <commit-sha>`; with automated sync the cluster follows, otherwise sync manually.
 - **Central dashboard**: Live visibility into resources, health, logs, and sync status.
+
+### At a Glance
+
+| Aspect | Push-Based CI/CD | GitOps with Argo CD |
+| :--- | :--- | :--- |
+| Who deploys? | CI runner (`kubectl apply` / `helm upgrade`) | Controller inside the cluster |
+| Cluster credentials | Stored in the CI system | Stay inside the cluster |
+| Drift detection | None by default | Continuous |
+| Rollback | Re-run pipeline / find old tag | `git revert` |
+| Audit trail | Pipeline logs | Git history |
 
 ---
 
@@ -131,6 +145,7 @@ flowchart LR
 - **Automated Sync** (`syncPolicy.automated`): Argo CD syncs automatically when Git changes. The two options below only apply when this is enabled.
 - **Self-Healing** (`selfHeal: true`): If someone changes a live resource manually (for example, via `kubectl`), Argo CD automatically reverts it to match Git. Default is `false`.
 - **Pruning** (`prune: true`): If a manifest is removed from Git, Argo CD deletes the corresponding resource from the cluster. Default is `false`.
+- **Project (`AppProject`)**: A logical grouping that restricts which repos, clusters, and namespaces an Application may use. Every Application belongs to one; the built-in one is `default`.
 
 ```yaml
 syncPolicy:
@@ -143,7 +158,7 @@ syncPolicy:
 
 # PART II: HANDS-ON LAB (KIND + ARGO CD)
 
-This lab creates a local Kubernetes cluster with **Kind**, installs Argo CD, and opens the UI.
+This lab creates a local Kubernetes cluster with **Kind**, installs Argo CD, opens the UI, deploys a sample app, and proves drift detection and self-healing.
 
 ## Step 1: Install Prerequisites (Docker, kubectl, Kind)
 
@@ -175,7 +190,7 @@ sudo mv ./kind /usr/local/bin/kind
 kind version
 ```
 
-> **Note**: On ARM64 machines, replace `amd64` with `arm64` in both downloads. On macOS, you can use `brew install kubectl kind`.
+> **Note**: On ARM64 machines, replace `amd64` with `arm64` in both downloads. On macOS, you can use `brew install kubectl kind`. On Windows, use `choco install kubernetes-cli kind` or download the binaries from the release pages.
 
 ---
 
@@ -191,7 +206,10 @@ Verify that `kubectl` points to the new cluster:
 
 ```bash
 kubectl cluster-info --context kind-my-cluster
+kubectl get nodes
 ```
+
+You should see one node in `Ready` state.
 
 ---
 
@@ -217,6 +235,18 @@ kubectl -n argocd wait --for=condition=Ready pods --all --timeout=300s
 kubectl -n argocd get pods
 ```
 
+Expected pods (names will have suffixes):
+
+```text
+argocd-application-controller-0
+argocd-applicationset-controller-...
+argocd-dex-server-...
+argocd-notifications-controller-...
+argocd-redis-...
+argocd-repo-server-...
+argocd-server-...
+```
+
 ---
 
 ## Step 4: Access the Argo CD UI
@@ -239,9 +269,149 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 > **Tip**: After changing the admin password (User Info → Update Password), delete the initial secret:
 > `kubectl -n argocd delete secret argocd-initial-admin-secret`
 
+*(Optional)* **Install the Argo CD CLI** to manage apps from the terminal:
+
+```bash
+# macOS
+brew install argocd
+
+# Linux
+curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
+
+# Log in (uses the port-forward from above)
+argocd login localhost:8080 --username admin --insecure
+```
+
 ---
 
-## Step 6: Clean Up
+## Step 5: Deploy Your First Application
+
+We will deploy the official **guestbook** sample from the `argoproj/argocd-example-apps` repository. You can do this declaratively (recommended, GitOps style), through the UI, or with the CLI.
+
+### Option A: Declarative (recommended)
+
+Save the following as `guestbook-app.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: guestbook
+  destination:
+    server: https://kubernetes.default.svc   # the cluster Argo CD runs in
+    namespace: guestbook
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+Apply it:
+
+```bash
+kubectl apply -f guestbook-app.yaml
+```
+
+### Option B: Argo CD UI
+
+1. Click **+ NEW APP**.
+2. Fill in:
+   - **Application Name**: `guestbook`
+   - **Project**: `default`
+   - **Sync Policy**: `Automatic` (tick *Prune Resources* and *Self Heal*)
+   - **Sync Options**: tick *Auto-Create Namespace*
+   - **Repository URL**: `https://github.com/argoproj/argocd-example-apps.git`
+   - **Revision**: `HEAD`
+   - **Path**: `guestbook`
+   - **Cluster URL**: `https://kubernetes.default.svc`
+   - **Namespace**: `guestbook`
+3. Click **CREATE**.
+
+### Option C: Argo CD CLI
+
+```bash
+argocd app create guestbook \
+  --repo https://github.com/argoproj/argocd-example-apps.git \
+  --path guestbook \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace guestbook \
+  --sync-policy automated --auto-prune --self-heal \
+  --sync-option CreateNamespace=true
+```
+
+### Verify the deployment
+
+```bash
+kubectl get applications -n argocd        # SYNC STATUS: Synced, HEALTH STATUS: Healthy
+kubectl get all -n guestbook
+```
+
+Open the app in the UI to see the resource tree (Deployment → ReplicaSet → Pod, plus the Service).
+
+To view the running guestbook itself:
+
+```bash
+kubectl port-forward svc/guestbook-ui -n guestbook 8081:80
+```
+
+Then open **http://localhost:8081**.
+
+---
+
+## Step 6: Test GitOps Behavior (Drift, Self-Heal, Rollback)
+
+### 6.1 Drift detection and self-healing
+
+The guestbook Deployment declares **1 replica** in Git. Change it manually:
+
+```bash
+kubectl scale deployment guestbook-ui -n guestbook --replicas=3
+kubectl get pods -n guestbook -w
+```
+
+Because `selfHeal: true` is enabled, Argo CD notices the difference and scales the Deployment back to **1 replica** within moments. Watch the same thing happen in the UI (`OutOfSync` → `Synced`).
+
+> **Want to see `OutOfSync`?** Set `selfHeal: false` (or disable automated sync) and repeat the scale command. The app will stay `OutOfSync` until you click **SYNC**.
+
+### 6.2 Pruning
+
+With `prune: true`, deleting a manifest from Git removes the resource from the cluster. To try this, **fork** `argocd-example-apps`, point your Application at your fork, delete a manifest (for example `guestbook/guestbook-ui-svc.yaml`), push, and watch Argo CD delete the Service.
+
+### 6.3 Rollback
+
+Because your fork is the source of truth, rolling back is a Git operation:
+
+```bash
+git revert <commit-sha>
+git push
+```
+
+Argo CD syncs to the reverted state. You can also use **History and Rollback** in the UI for an emergency rollback (note that rollback is not available while automated sync is enabled; disable it first).
+
+---
+
+## Step 7: Clean Up
+
+Delete the application first (so Argo CD removes the resources it created), then the cluster:
+
+```bash
+kubectl delete -f guestbook-app.yaml
+# or: argocd app delete guestbook --cascade
+```
+
+> **Tip**: To delete the managed resources along with the Application, the Application needs the `resources-finalizer.argocd.argoproj.io` finalizer (the CLI and UI add it for you with cascade delete). Without it, deleting the Application leaves the deployed resources behind.
+
+Remove the whole lab environment:
 
 ```bash
 kind delete cluster --name my-cluster
@@ -249,4 +419,61 @@ kind delete cluster --name my-cluster
 
 ---
 
-*GitOps Guide — Maintained for Zero-Downtime Releases and High-Availability Kubernetes Operations.*
+# Troubleshooting
+
+| Symptom | Likely Cause | Fix |
+| :--- | :--- | :--- |
+| `kind create cluster` fails | Docker is not running | Start Docker, then run `docker ps` to confirm |
+| CRD error on install (`metadata.annotations: Too long`) | Client-side apply used | Re-run with `--server-side --force-conflicts` |
+| `localhost:8080` not loading | Port-forward stopped or port in use | Restart the port-forward or use another local port (e.g. `8082:443`) |
+| `argocd-initial-admin-secret` not found | Secret was already deleted after a password change | Reset via `argocd account update-password` or patch the `argocd-secret` |
+| App stuck `OutOfSync` | Automated sync disabled, or sync failed | Click **SYNC**, check the **Events** and **Sync Result** tabs |
+| App `Synced` but `Degraded` | Bad image / failing probe | `kubectl describe pod -n <ns> <pod>` and `kubectl logs` |
+| `ComparisonError` / repo not found | Wrong `repoURL`, private repo without credentials | Fix the URL or add repo credentials in **Settings → Repositories** |
+| Namespace not found on sync | `CreateNamespace=true` missing | Add the sync option or create the namespace manually |
+| Pods `Pending` after install | Docker has too little CPU/memory | Increase Docker resources (4 GB RAM recommended) |
+
+Useful debugging commands:
+
+```bash
+kubectl -n argocd logs deploy/argocd-repo-server
+kubectl -n argocd logs statefulset/argocd-application-controller
+kubectl -n argocd describe application guestbook
+```
+
+---
+
+# Quick Command Cheat Sheet
+
+```bash
+# Cluster
+kind create cluster --name my-cluster
+kind get clusters
+kind delete cluster --name my-cluster
+
+# Argo CD access
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
+
+# Applications
+kubectl get applications -n argocd
+argocd app list
+argocd app get guestbook
+argocd app sync guestbook
+argocd app history guestbook
+argocd app rollback guestbook <ID>
+argocd app delete guestbook --cascade
+```
+
+---
+
+# Further Reading
+
+- [Argo CD Documentation](https://argo-cd.readthedocs.io/)
+- [Argo CD Example Apps](https://github.com/argoproj/argocd-example-apps)
+- [Kind Documentation](https://kind.sigs.k8s.io/)
+- [OpenGitOps Principles](https://opengitops.dev/)
+
+---
+
+*GitOps Guide: a hands-on reference for learning declarative, Git-driven Kubernetes delivery.*
