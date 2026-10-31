@@ -83,16 +83,15 @@ chmod +x scripts/*.sh
 ### 2.1 Install Tools
 Installs missing CLI tools (kubectl, kind/k3d, argocd CLI, etc.).
 ```bash
-Install-tools
+#Install-tools
 ./scripts/install-tools.sh
 ```
 
 ### 2.2 Create Cluster
 Provisions the local Kubernetes cluster and prints node/pod status.
 ```bash
-Create-cluster
+#Create-cluster
 ./scripts/create-cluster.sh
-
 # verify
 kubectl get nodes
 kubectl get pods -A
@@ -101,19 +100,17 @@ kubectl get pods -A
 ### 2.3 Install Argo CD
 Installs Argo CD into the `argocd` namespace.
 ```bash
-Install-argocd
+#Install-argocd
 ./scripts/install-argocd.sh
-
 # wait for pods to become Running (Ctrl+C to stop watching)
-kubectl get pods -n argocd -w
+kubectl get nodes -n argocd -w
 ```
 
 ### 2.4 Install Argo Rollouts
 Installs the Rollouts controller (namespace `argo-rollouts`) and the `kubectl argo rollouts` plugin.
 ```bash
-Install-rollouts
+#Install-rollouts
 ./scripts/install-rollouts.sh
-
 # verify
 kubectl get pods -n argo-rollouts
 kubectl argo rollouts version
@@ -122,7 +119,7 @@ kubectl argo rollouts version
 ### 2.5 Access Argo CD
 Starts a port-forward to the Argo CD server (`https://localhost:8080`) and prints the initial admin password.
 ```bash
-Access-argocd
+#Access-argocd
 ./scripts/access-argocd.sh
 ```
 
