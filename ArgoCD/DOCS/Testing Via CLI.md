@@ -49,41 +49,8 @@ To configure an application for **Manual Deployment**, omit the `automated` bloc
 
 ### Manual Application Manifest (`apps/rolling-update/application.yaml`)
 
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: shopsphere-prod-manual
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
-    targetRevision: main
-    path: apps/rolling-update
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: shopsphere-prod
-  # MANUAL SYNC: the `automated` block (prune / selfHeal) is NOT configured.
-  # Synchronization will only execute when manually triggered by an engineer.
-  syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-    retry:
-      limit: 3
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 1m
-```
-
-### Apply the Application via kubectl
-
 ```bash
-kubectl apply -f apps/rolling-update/application.yaml
+kubectl apply -f apps/rolling-update
 ```
 
 ---
@@ -95,7 +62,7 @@ Before manually deploying, always inspect what changes will be applied against t
 ### Step 3.1: Check Current Sync Status
 
 ```bash
-argocd app get shopsphere-prod-manual
+argocd app get shopsphere-manual
 ```
 
 *Expected output:*
@@ -110,7 +77,7 @@ Revision:        7f9a1c2 (ahead of live cluster by 1 commit)
 
 ```bash
 # View the exact unified diff showing which YAML fields will change
-argocd app diff shopsphere-prod-manual
+argocd app diff shopsphere-manual
 ```
 
 *Example output:*
@@ -131,10 +98,10 @@ argocd app diff shopsphere-prod-manual
 
 ```bash
 # Manually trigger synchronization
-argocd app sync shopsphere-prod-manual
+argocd app sync shopsphere-manual
 
 # Block until pods pass readiness probes
-argocd app wait shopsphere-prod-manual --sync --health --timeout 180
+argocd app wait shopsphere-manual --sync --health --timeout 180
 ```
 
 > **UI alternative:** open the app in the Argo CD UI → **SYNC** → review resources → **SYNCHRONIZE**.
@@ -144,7 +111,7 @@ argocd app wait shopsphere-prod-manual --sync --health --timeout 180
 Simulate the deployment without applying any changes to the cluster:
 
 ```bash
-argocd app sync shopsphere-prod-manual --dry-run
+argocd app sync shopsphere-manual --dry-run
 ```
 
 ### 4.3 Targeted Resource-Level Manual Sync
