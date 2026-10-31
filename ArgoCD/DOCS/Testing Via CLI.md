@@ -60,7 +60,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap.git
+    repoURL: https://github.com/Learning-Pages/My-ArgoCD-Lap.git
     targetRevision: main
     path: apps/rolling-update
   destination:
@@ -83,7 +83,7 @@ spec:
 ### Apply the Application via kubectl
 
 ```bash
-kubectl apply -f apps/rolling-update/application-manual.yaml
+kubectl apply -f apps/rolling-update/application.yaml
 ```
 
 ---
