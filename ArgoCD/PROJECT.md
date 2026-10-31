@@ -55,7 +55,7 @@
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Learning-DevOps-Platform/My-ArgoCD-Lap.git
+git clone https://github.com/Learning-Pages/My-ArgoCD-Lap.git
 cd My-ArgoCD-Lap
 
 # Detect your default branch (main or master) and reuse it everywhere
