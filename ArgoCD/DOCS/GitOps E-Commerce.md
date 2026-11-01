@@ -1,4 +1,4 @@
-# Cloud Shop — Complete Argo CD GitOps E-Commerce Application
+# CloudShop — Complete Argo CD GitOps E-Commerce Application
 
 Cloud Shop is a lightweight, production-inspired e-commerce application designed to demonstrate modern containerization, Kubernetes operations, GitOps delivery, CI security, and observability on a small Ubuntu 24.04 learning VM.
 
